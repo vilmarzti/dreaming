@@ -95,7 +95,7 @@ def create_mask2(image):
 
     # apply GrabCut using the the mask segmentation method
     start = time.time()
-    (mask, bgModel, fgModel) = cv2.grabCut(img, mask, None, bgModel, fgModel, iterCount=2, mode=cv2.GC_INIT_WITH_MASK)
+    (mask, bgModel, fgModel) = cv2.grabCut(img, mask, None, bgModel, fgModel, iterCount=1, mode=cv2.GC_INIT_WITH_MASK)
     end = time.time()
     print("[INFO] applying GrabCut took {:.2f} seconds".format(end - start)) 
 
