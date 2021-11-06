@@ -25,9 +25,9 @@ def compute_max_thresh(mask_paths):
     return num_max
 
 def compute_individual_zero(mask_paths):
-    thresh = []
-    thresh = [count_black.count_pixels(p) for p in mask_paths]
-    return thresh
+    individual = []
+    individual = [count_black.count_pixels(p) for p in mask_paths]
+    return individual 
 
 
 if __name__ == "__main__":

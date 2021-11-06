@@ -111,7 +111,6 @@ def create_mask2(image):
 
 def create_and_save(image_path, mask_path):
     mask = create_mask2(image_path)
-    breakpoint()
     cv2.imwrite(mask_path, mask)
 
 
