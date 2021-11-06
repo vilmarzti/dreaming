@@ -1,0 +1,3 @@
+[submodule "Few-Shot-Patch-Based-Training"]
+	path = Few-Shot-Patch-Based-Training
+	url = git@github.com:vilmarzti/Few-Shot-Patch-Based-Training.git
