@@ -1,3 +1,6 @@
 project_env
 masks
+smooth_masks
+__pycache__
+*.mp4
 .vscode

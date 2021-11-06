@@ -7,7 +7,7 @@ import numpy as np
 import multiprocessing as mp
 
 from os import path
-from numpy.core.defchararray import upper
+
 
 def check_threshold(img):
     #canny = cv2.Canny(img, 85, 255) 
@@ -104,7 +104,6 @@ def create_mask2(image):
     boundingBoxes = [cv2.boundingRect(c) for c in contours]
     get_rect = [i for i, x in enumerate(boundingBoxes) if x[0] == 0 and x[3] < 550 and x[2] < 950][0]
     cv2.drawContours(fgd_mask, contours, get_rect, 255, -1)
-
 
     return fgd_mask
     

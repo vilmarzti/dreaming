@@ -7,10 +7,8 @@ import math
 import shutil
 import argparse
 
-from numpy.core.numeric import full
 
 sys.path.append("./Few-Shot-Patch-Based-Training/_tools/")
-import tool_gauss
 import add_gauss
 import count_black
 import config
