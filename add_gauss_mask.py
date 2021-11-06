@@ -12,6 +12,8 @@ from numpy.core.numeric import full
 sys.path.append("./Few-Shot-Patch-Based-Training/_tools/")
 import tool_gauss
 import add_gauss
+import count_black
+import config
 
 def compute_max_thresh(mask_paths):
     num_max = 0
@@ -22,6 +24,11 @@ def compute_max_thresh(mask_paths):
         num_max = max(num_max, perc_black)
     return num_max
 
+def compute_individual_zero(mask_paths):
+    thresh = []
+    thresh = [count_black.count_pixels(p) for p in mask_paths]
+    return thresh
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="""Computes gauss with given mask""")
@@ -29,26 +36,32 @@ if __name__ == "__main__":
     parser.add_argument("--mask-folder", "-m",
         help="The path to the folder with the masks",
         required=True)
-    
+
+    parser.add_argument("--threshold", "-t",
+        help="Threshold in percent",
+        type=int,
+        default=3
+    )
 
     args = parser.parse_args()
+
     def copy_file(image_name):
         shutil.copy(
             path.join(args.mask_folder, image_name),
-            path.join(tool_gauss.maskDir, image_name)
+            path.join(config.maskDir, image_name)
         ) 
     
+    max_threshold = args.threshold
     mask_paths = os.listdir(args.mask_folder)
     mask_paths.sort()
     
     full_paths = [path.join(args.mask_folder, p) for p in mask_paths]
 
-    start = int(tool_gauss.frameFirst)
-    end = int(tool_gauss.frameLast)
-    full_paths = full_paths[start - 1: end + 1]
+    start = int(config.frameFirst)
+    end = int(config.frameLast)
+    full_paths = full_paths[start - 1: end]
 
-    #max_threshold = compute_max_thresh(full_paths)
-    max_threshold = 35
-    print(max_threshold)
+    individual_zero = compute_individual_zero(full_paths)
+
     os.chdir("./Few-Shot-Patch-Based-Training/_tools")
-    add_gauss.loop(max_threshold, 10, copy_file)
+    add_gauss.loop(max_threshold, 10, copy_file, individual_zero)
