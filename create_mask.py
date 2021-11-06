@@ -8,6 +8,10 @@ import multiprocessing as mp
 
 from os import path
 
+import sys
+sys.path.append("./Few-Shot-Patch-Based-Training/_tools/")
+import config
+
 
 def check_threshold(img):
     #canny = cv2.Canny(img, 85, 255) 
@@ -56,6 +60,7 @@ def create_mask2(image):
     img = cv2.imread(image)
 
     hsv_image = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    img = cv2.GaussianBlur(img, (5, 5), 0)
 
     # Mask obtained through threshold
     hsv_threshold = cv2.inRange(hsv_image, (10, 0, 8), (39, 170, 255))
@@ -119,6 +124,7 @@ def process_folder(input_path, output_path):
     # Get all imag-paths in order
     images = os.listdir(input_path)
     images.sort()
+    images[int(config.frameFirst) - 1: int(config.frameLast)]
     image_paths = [path.join(input_path, x) for x in images]
     mask_paths = list(map(lambda x: str(path.join(output_path, x)), images))
 
