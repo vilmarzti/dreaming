@@ -121,10 +121,10 @@ def create_and_save(image_path, mask_path):
 def process_folder(input_path, output_path):
     pool = mp.Pool(mp.cpu_count())
 
-    # Get all imag-paths in order
+    # Generate all necesary paths
     images = os.listdir(input_path)
     images.sort()
-    images[int(config.frameFirst) - 1: int(config.frameLast)]
+    images = images[int(config.frameFirst) - 1: int(config.frameLast)]
     image_paths = [path.join(input_path, x) for x in images]
     mask_paths = list(map(lambda x: str(path.join(output_path, x)), images))
 
@@ -133,7 +133,6 @@ def process_folder(input_path, output_path):
 
     # Create Masks
     pool.starmap(create_and_save, zip(image_paths, mask_paths))
-    #create_and_save(image_paths[0], mask_paths[0])
 
 
 if __name__ == "__main__":
