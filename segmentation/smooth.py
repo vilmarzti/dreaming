@@ -8,7 +8,7 @@ import multiprocessing as mp
 from itertools import repeat
 from os import path
 
-sys.path.append("./Few-Shot-Patch-Based-Training/_tools/")
+sys.path.append("../Few-Shot-Patch-Based-Training/_tools/")
 import config
 
 length = 10 # range will be equal to 2* length + 1

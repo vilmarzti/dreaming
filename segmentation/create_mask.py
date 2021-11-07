@@ -9,7 +9,7 @@ import multiprocessing as mp
 from os import path
 
 import sys
-sys.path.append("./Few-Shot-Patch-Based-Training/_tools/")
+sys.path.append("../Few-Shot-Patch-Based-Training/_tools/")
 import config
 
 
@@ -56,7 +56,7 @@ def check_threshold(img):
     cv2.destroyAllWindows()
 
 
-def create_mask2(image):
+def create_graph_cut(image):
     img = cv2.imread(image)
 
     hsv_image = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -114,7 +114,7 @@ def create_mask2(image):
     
 
 def create_and_save(image_path, mask_path):
-    mask = create_mask2(image_path)
+    mask = create_graph_cut(image_path)
     cv2.imwrite(mask_path, mask)
 
 
