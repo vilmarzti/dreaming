@@ -34,7 +34,7 @@ def main(num_samples, max_num_epochs=10, gpus_per_trial=0.5):
         num_samples=num_samples,
         trial_dirname_creator=trial_str_creator,
         scheduler=scheduler,
-        local_dir="./cnn_raytune",
+        local_dir="./data/cnn_raytune",
         name="cnn_segment"
     )
 

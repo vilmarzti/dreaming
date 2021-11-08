@@ -6,4 +6,4 @@ __pycache__
 .vscode
 cnn_raytune
 *.egg-info
-data
+/data
