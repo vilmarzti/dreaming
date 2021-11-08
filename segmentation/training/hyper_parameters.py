@@ -2,8 +2,10 @@ from ray import tune
 from ray.tune import schedulers
 from ray.tune.schedulers import ASHAScheduler
 
-from training import test_best_model, train
+from segmentation.training.training import test_best_model, train
 
+def trial_str_creator(trial):
+    return f"trial_{trial.trial_id}"
 
 def main(num_samples, max_num_epochs=10, gpus_per_trial=0.5):
     config = {
@@ -30,8 +32,10 @@ def main(num_samples, max_num_epochs=10, gpus_per_trial=0.5):
         metric="loss",
         mode="min",
         num_samples=num_samples,
+        trial_dirname_creator=trial_str_creator,
         scheduler=scheduler,
-        local_dir="./cnn_raytune"
+        local_dir="./cnn_raytune",
+        name="cnn_segment"
     )
 
     best_trial = result.get_best_trial("loss", "min", "last")
@@ -45,4 +49,4 @@ def main(num_samples, max_num_epochs=10, gpus_per_trial=0.5):
     test_best_model(best_trial)
 
 if __name__ == "__main__":
-    main(100)
+    main(20)

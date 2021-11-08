@@ -5,3 +5,5 @@ __pycache__
 *.mp4
 .vscode
 cnn_raytune
+*.egg-info
+data

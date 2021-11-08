@@ -46,14 +46,16 @@ class CNNSegmentation(nn.Module):
         self.padding = padding
         self.kernel_size = kernel_size
 
-        self.padding_num = floor((kernel_size - 1) / 2)
+        padding_left = floor(kernel_size - 1 / 2)
+        padding_right = kernel_size - padding_left - 1
+        self.padding_tuple = (padding_left, padding_right, padding_left, padding_right)
 
         if self.padding == "reflection":
-            self.pad = nn.ReflectionPad2d(self.padding_num)
+            self.pad = nn.ReflectionPad2d(self.padding_tuple)
         elif self.padding == "zero":
-            self.pad = nn.ZeroPad2d(self.padding_num)
+            self.pad = nn.ZeroPad2d(self.padding_tuple)
         elif self.padding == "replication":
-            self.pad = nn.ReplicationPad2d(self.padding_num)
+            self.pad = nn.ReplicationPad2d(self.padding_tuple)
         
         if self.thin:
             self.conv = ThinConv2d

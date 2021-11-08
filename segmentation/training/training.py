@@ -2,8 +2,9 @@ from math import floor
 from torch.nn.functional import interpolate
 from torch.nn.modules.loss import BCELoss
 from torch.utils.data.dataset import random_split
-from dataset import SegmentationDataset
-from cnn import  CNNSegmentation
+
+from segmentation.data.dataset import SegmentationDataset
+from segmentation.cnn.cnn import  CNNSegmentation
 
 from torch.utils.data import DataLoader
 from torchsummary import summary
@@ -55,6 +56,8 @@ def train(config, checkpoint_dir=None):
         model_state, optimizer_state = torch.load(checkpoint)
         net.load_state_dict(model_state)
         optimizer.load_state_dict(optimizer_state)
+    
+    max_steps = len(train_loader) / 10
 
     for epoch in range(10):
         running_loss = 0
@@ -81,7 +84,7 @@ def train(config, checkpoint_dir=None):
             optimizer.step()
 
             running_loss += loss.item()
-            if i % 2000 == 1999:
+            if i > max_steps:
                 break
 
         val_losses = 0
@@ -90,8 +93,6 @@ def train(config, checkpoint_dir=None):
         net.eval()
         for inputs, labels in valid_loader:
             with torch.no_grad():
-                if step >= 2000:
-                    break
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
@@ -112,9 +113,9 @@ def train(config, checkpoint_dir=None):
             ck_path = os.path.join(checkpoint_dir, "checkpoint")
             torch.save((net.state_dict(), optimizer.state_dict()), ck_path)
 
-        mean_val_loss = val_losses / 2000
-        mean_val_acc = val_accuracy / 2000
-        tune.report(loss=mean_val_loss, accuracy=mean_val_acc)
+        mean_val_loss = val_losses / len(valid_loader)
+        mean_val_acc = val_accuracy / len(valid_loader)
+        tune.report(loss=mean_val_loss, accuracy=mean_val_acc, training_loss=running_loss/max_steps)
 
 def test_best_model(best_trial):
     config = best_trial.config
