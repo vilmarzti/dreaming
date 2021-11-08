@@ -2,7 +2,7 @@ from ray import tune
 from ray.tune import schedulers
 from ray.tune.schedulers import ASHAScheduler
 
-from segmentation.training.training import test_best_model, train
+from segmentation.training.cnn import test_best_model, train
 
 def trial_str_creator(trial):
     return f"trial_{trial.trial_id}"

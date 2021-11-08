@@ -48,11 +48,10 @@ class RangeImage(nn.Module):
     
     def forward(self, x):
         channels = torch.unbind(x, 1)
-        breakpoint()
         applied_ranges = [r(c) for c, r in zip(channels, self.ranges)]
         x = torch.stack(applied_ranges, 1)
         return x
 
     def get_ranges(self):
-        ranges = [s.get_range() for s in self.ranges()]
+        ranges = [s.get_range() for s in self.ranges]
         return ranges

@@ -1,166 +1,85 @@
-from math import floor
-from torch.nn.functional import interpolate
-from torch.nn.modules.loss import BCELoss
-from torch.utils.data.dataset import random_split
-
+from torch.utils.data.dataloader import DataLoader
 from segmentation.data.dataset import SegmentationDataset
-from segmentation.cnn.cnn import  CNNSegmentation
+from segmentation.threshold.threshold import RangeImage
 
-from torch.utils.data import DataLoader
-from torchsummary import summary
-
-import ray
-from ray import tune
+from torch.nn.modules.loss import BCELoss
 
 import torch
 import torch.optim as optim
 
-import os
+from cv2 import COLOR_BGR2HSV, COLOR_BGR2GRAY
 
-# General params
-crop_size = 100
 
-def train(config, checkpoint_dir=None):
-    # CNN params
-    kernel_size = config["kernel_size"]
-    input_channels = 3
-    intermidiate_channels = config["intermidiate_channels"]
-    num_layers = config["num_layers"]
-    thin =  config["thin"]
-    positional_encoding = config["positional_encoding"]
-    padding = config["padding"]
-    learning_rate = config["learning_rate"]
-    batch_size = config["batch_size"]
-
-    # check device
+def train(gray=True):
+    crop_size = 100
     device = "cuda:0" if torch.cuda.is_available else "cpu"
+    flag = COLOR_BGR2GRAY if gray else COLOR_BGR2HSV
+    lr = 0.001
+    batch_size = 32
+    max_steps = 9000
 
     # CNN
-    net = CNNSegmentation(kernel_size, input_channels, intermidiate_channels, num_layers, thin, positional_encoding, padding)
+    net = RangeImage(1) if gray else RangeImage(3)
     net = net.to(device)
 
     criterion = BCELoss()
-    optimizer = optim.Adam(net.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(net.parameters(), lr=lr)
 
-    # Train 
-    train_set = SegmentationDataset("/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/train_input", "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/train_output", crop_size)
+    train_set = SegmentationDataset("/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/train_input", "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/train_output", crop_size, flag)
+    valid_set = SegmentationDataset("/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_input", "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_output", crop_size, flag)
 
-    split_abs = int(len(train_set) * 0.8)
-    train_subset, valid_subset = random_split(train_set,  [split_abs, len(train_set) - split_abs])
-
-    train_loader = DataLoader(train_subset, batch_size, shuffle=True, num_workers=8)
-    valid_loader = DataLoader(valid_subset, batch_size, shuffle=True, num_workers=8)
-
-    if checkpoint_dir:
-        checkpoint = os.path_join(checkpoint_dir, "checkpoint")
-        model_state, optimizer_state = torch.load(checkpoint)
-        net.load_state_dict(model_state)
-        optimizer.load_state_dict(optimizer_state)
-    
-    max_steps = len(train_loader) / 10
+    train_loader = DataLoader(train_set, batch_size, shuffle=True, num_workers=8)
+    valid_loader = DataLoader(valid_set, batch_size, shuffle=True, num_workers=8)
 
     for epoch in range(10):
-        running_loss = 0
-        net.train()
-        for i, data in enumerate(train_loader):
-            inputs, labels= data
-
+        train_loss = 0
+        train_accuracy = 0
+        for i, (inputs, labels) in enumerate(train_loader):
             inputs = inputs.to(device)
             labels = labels.to(device)
 
             optimizer.zero_grad()
 
             outputs = net(inputs)
-
-            # interpolate if we don't have same size
-            outputs = interpolate(outputs, (crop_size, crop_size), mode="bilinear", align_corners=False) if not padding else outputs
             outputs = torch.squeeze(outputs)
-
-            if list(outputs.shape) != list(labels.shape):
-                ray.util.pdb.set_trace()
 
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
 
-            running_loss += loss.item()
-            if i > max_steps:
-                break
+            accuracy = torch.mean((labels == (outputs > 0.5).type(torch.uint8)).type(torch.float))
+            train_accuracy += accuracy.item()
+            train_loss += loss.item()
 
-        val_losses = 0
-        val_accuracy = 0
-        step = 0
-        net.eval()
-        for inputs, labels in valid_loader:
-            with torch.no_grad():
+            if i % 2000 == 1999:
+                train_loss /= 2000
+                train_accuracy /= 2000
+                print(f"Train loss: {train_loss} Train accuracy: {train_accuracy}")
+            
+            if i >= max_steps:
+                break
+        
+        with torch.no_grad():
+            valid_accuracy = 0
+            valid_loss = 0
+            for i, (inputs, labels) in enumerate(valid_loader):
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
-                output = net(inputs)
-                output = interpolate(output, (crop_size, crop_size), mode="bilinear", align_corners=False) if not padding else output
-                output = torch.squeeze(output)
+                outputs = net(inputs)
+                outputs = torch.squeeze(outputs)
 
-                # compute validation loss
-                val_loss = criterion(outputs, labels)
-                val_losses += val_loss.item()
+                loss = criterion(outputs, labels)
 
-                # compute validation accuracy
-                accuracy = torch.mean((labels == (output > 0.5).type(torch.uint8)).type(torch.float))
-                val_accuracy += accuracy.item()
-                step += 1
+                accuracy = torch.mean((labels == (outputs > 0.5).type(torch.uint8)).type(torch.float))
 
-        with tune.checkpoint_dir(step=epoch) as checkpoint_dir:
-            ck_path = os.path.join(checkpoint_dir, "checkpoint")
-            torch.save((net.state_dict(), optimizer.state_dict()), ck_path)
+                valid_accuracy += accuracy.item()
+                valid_loss += loss.item()
 
-        mean_val_loss = val_losses / len(valid_loader)
-        mean_val_acc = val_accuracy / len(valid_loader)
-        tune.report(loss=mean_val_loss, accuracy=mean_val_acc, training_loss=running_loss/max_steps)
+                if i >= max_steps:
+                    valid_accuracy /= max_steps
+                    valid_loss /= max_steps
 
-def test_best_model(best_trial):
-    config = best_trial.config
-
-    # setup params
-    kernel_size = config["kernel_size"]
-    input_channels = 3
-    intermidiate_channels = config["intermidiate_channels"]
-    num_layers = config["num_layers"]
-    thin =  config["thin"]
-    positional_encoding = config["positional_encoding"]
-    padding = config["padding"]
-    learning_rate = config["learning_rate"]
-    batch_size = config["batch_size"]
-
-    device = "cuda:0" if torch.cuda.is_available else "cpu"
-
-    # create net from params
-    net = CNNSegmentation(kernel_size, input_channels, intermidiate_channels, num_layers, thin, positional_encoding, padding)
-    net.to(device)
-
-    # load model
-    ck_path = os.path.join(best_trial.checkpoint.value, "checkpoint")
-    model_state, optim_state = torch.load(ck_path)
-    net.load_state_dict(model_state)
-
-    # Get DAtaloader
-    valid_set = SegmentationDataset("/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_input", "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_output", crop_size)
-    valid_loader = DataLoader(valid_set, batch_size=32, shuffle=True, num_workers=2)
-
-    # Compute accuracy
-    mean_accuracy = 0
-    with torch.no_grad():
-        for i, (inputs, labels) in enumerate(valid_loader):
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-
-            outputs = net(inputs)
-            outputs = interpolate(outputs, (crop_size, crop_size), mode="bilinear", align_corners=False) if not padding else outputs
- 
-            accuracy = torch.mean((labels == (outputs > 0.5).type(torch.uint8)).type(torch.float))
-            mean_accuracy += accuracy.item()
-
-            if i >= 22862:
-                break
-
-    mean_accuracy /= 22862 
-    best_trial(f"Best trial on validation set: {mean_accuracy}")
+                    print(f"Validation accuracy: {valid_accuracy} Validation loss: {valid_loss}")
+                    print(net.get_ranges())
+                    break
