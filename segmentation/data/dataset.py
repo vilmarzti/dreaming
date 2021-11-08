@@ -4,16 +4,37 @@ import torch
 import numpy as np
 
 from torch.utils.data import Dataset
-from torchvision.transforms import transforms
-from positional_embedding import positionalencoding2d_linear, positionalencoding2d_sin
+
+from segmentation.helper.positional_embedding import positionalencoding2d_linear, positionalencoding2d_sin
 
 class SegmentationDataset(Dataset):
-    def __init__(self, input_path, output_path, crop_size):
+    def __init__(self, input_path, output_path, crop_size, cvt_flag=None):
         self.crop_size = crop_size
         self.number_of_crops = (1280 - self.crop_size) * (720 - self.crop_size)
 
         self.images_input = self.read_images(input_path, cv2.IMREAD_COLOR)
         self.images_output = self.read_images(output_path, cv2.IMREAD_GRAYSCALE)
+
+        # Convert to HSV or Gray
+        if cvt_flag:
+            self.images_input = [cv2.cvtColor(image, cvt_flag) for image in self.images_input]
+            self.images_input = np.array(self.images_input)
+        
+        # Preprocessing input
+        if cvt_flag == cv2.COLOR_BGR2GRAY:
+            self.images_input = self.images_input / 255.0
+            self.images_input = np.expand_dims(self.images_input, axis=3)
+        elif cvt_flag == cv2.COLOR_BGR2HSV:
+            self.images_input[:,:,:,0] = self.images_input[:,:,:,0] / 180.0
+            self.images_input[:,:,:,1] = self.images_input[:,:,:,1] / 255.0
+            self.images_input[:,:,:,2] = self.images_input[:,:,:,2] / 255.0
+        else:  
+            max_size = np.amax(self.images_input, axis=(1, 2))
+            max_size = np.expand_dims(max_size, axis=(1, 2))
+            self.images_input /= max_size
+
+        # Prprocessing Output
+        self.images_output = np.where(self.images_output < 128, 0, 1)
 
         # get encodings
         num_images = self.images_input.shape[0]
@@ -27,24 +48,6 @@ class SegmentationDataset(Dataset):
         # Add encoding
         self.images_input = np.concatenate([self.images_input, lin_encoding, sin_encoding], axis=3)
         self.images_input = np.transpose(self.images_input, [0, 3, 1, 2])
-
-        # Prprocessing
-        self.images_output = np.where(self.images_output < 128, 0, 1)
-
-        # Standardize along color and image
-        max_size = np.amax(self.images_input[:,:3], axis=(1, 2, 3))
-        max_size = np.expand_dims(max_size, axis=(1, 2, 3))
-        self.images_input[:,:3] /= max_size
-        """
-        image_color_mean = np.mean(self.images_input[:, :3], (2, 3))
-        image_color_std = np.std(self.images_input[:,:3], (2, 3))
-
-        image_color_mean = np.expand_dims(image_color_mean, axis=(2, 3))
-        image_color_std = np.expand_dims(image_color_std, axis=(2, 3))
-
-        self.images_input[:, :3] = (self.images_input[:, :3] - image_color_mean) / image_color_std
-
-        """
 
     def __len__(self):
         return self.number_of_crops * len(self.images_input)

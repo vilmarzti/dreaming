@@ -1,4 +1,3 @@
-import glob
 import os
 import cv2
 import os.path as path
