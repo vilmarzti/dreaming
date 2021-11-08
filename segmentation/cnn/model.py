@@ -1,3 +1,4 @@
+from math import floor
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,7 +13,7 @@ class ThinConv2d(nn.Module):
         self.input_channels = input_channels
         self.output_channels = output_channels
 
-        self.conv_2d = nn.ModuleList([nn.Conv2d(1, 1, kernel_size, padding="same", padding_mode=padding) for _ in range(input_channels)])
+        self.conv_2d = nn.ModuleList([nn.Conv2d(1, 1, kernel_size) for _ in range(input_channels)])
         self.conv_1d = nn.Conv1d(input_channels, output_channels, 1)
 
     def forward(self, x):
@@ -26,7 +27,6 @@ class ThinConv2d(nn.Module):
         # reaarrenge for 1d conv
         new_shape = (x.shape[0], self.output_channels, x.shape[2], x.shape[3])
         x = torch.flatten(x, 2)
-        breakpoint()
         x = self.conv_1d(x)
         x = torch.reshape(x, new_shape) 
 
@@ -47,28 +47,40 @@ class CNNSegmentation(nn.Module):
         self.intermidiate_channels = intermidiate_channels
         self.positional_encoding = positional_encoding
         self.thin = thin
+        self.pad = nn.ReflectionPad2d(floor(kernel_size/2))
 
         if thin:
             self.input_layer = ThinConv2d(kernel_size, input_channels, intermidiate_channels, padding=padding) 
             self.intermidiate_layers = ModuleList([ThinConv2d(kernel_size, intermidiate_channels, intermidiate_channels, padding=padding) for _ in range(self.hidden_layers)])
             self.output_layer = ThinConv2d(kernel_size, intermidiate_channels, 1, padding=padding)
         else:
-            self.input_layer = nn.Conv2d(input_channels, intermidiate_channels, kernel_size, padding="same", padding_mode=padding)
-            self.intermidiate_layers = ModuleList([nn.Conv2d(intermidiate_channels, intermidiate_channels, kernel_size, padding="same", padding_mode=padding) for _ in range(self.hidden_layers)])
-            self.output_layer = nn.Conv2d(intermidiate_channels, 1, kernel_size, padding="same", padding_mode=padding)
+            self.input_layer = nn.Conv2d(input_channels, intermidiate_channels, kernel_size)
+            self.intermidiate_layers = ModuleList([nn.Conv2d(intermidiate_channels, intermidiate_channels, kernel_size) for _ in range(self.hidden_layers)])
+            self.output_layer = nn.Conv2d(intermidiate_channels, 1, kernel_size)
         
     def forward(self, x):
+        if self.positional_encoding == None:
+            x = x[:, :3]
+        elif self.positional_encoding == "linear":
+            x = x[:, :5] # RGB + linear encoding
+        elif self.positional_encoding == "sin":
+            indices = [0, 1, 2, 5, 6, 7, 8] # RGB + sin encoding
+            x = x[:, indices]
+
         #input
+        x = self.pad(x)
         x = self.input_layer(x)
         x = F.relu(x)
 
         # Hidden
         for layer in self.intermidiate_layers:
+            x = self.pad(x)
             x = layer(x)
             x = F.relu(x)
         
         #Output
+        x = self.pad(x)
         x = self.output_layer(x)
-        x = F.sigmoid(x)
+        x = torch.sigmoid(x)
 
         return x
