@@ -24,6 +24,7 @@ def train(config, checkpoint_dir=None):
     # Other params
     learning_rate = config["learning_rate"]
     batch_size = config["batch_size"]
+    padding = config["padding"]
 
     # check device
     device = "cuda:0" if torch.cuda.is_available else "cpu"
