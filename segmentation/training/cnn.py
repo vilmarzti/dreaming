@@ -4,7 +4,6 @@ from torch.nn.modules.loss import BCELoss
 from torch.utils.data.dataset import random_split
 
 from segmentation.data.dataset import SegmentationDataset
-from segmentation.cnn.cnn import  CNNSegmentation
 from segmentation.helper import create_cnn
 
 from torch.utils.data import DataLoader
