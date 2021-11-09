@@ -1,4 +1,4 @@
-from segmentation.cnn import CNNSegmentation
+from segmentation.models import CNNSegmentation
 
 def create_cnn(config):
     # CNN params

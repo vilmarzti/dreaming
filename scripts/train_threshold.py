@@ -1,4 +1,4 @@
-from segmentation.training.threshold import train
+from segmentation.training import train
 
 # Train to get GRAYSCALE Thresholds
 print("Training Grayscale range")

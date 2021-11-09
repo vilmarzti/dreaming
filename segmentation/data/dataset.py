@@ -5,7 +5,7 @@ import numpy as np
 
 from torch.utils.data import Dataset
 
-from segmentation.helper.positional_embedding import positionalencoding2d_linear, positionalencoding2d_sin
+from segmentation.helper import positionalencoding2d_linear, positionalencoding2d_sin
 
 def normalize(image_channel):
     max_size = np.amax(image_channel, axis=(1, 2))

@@ -1,7 +1,8 @@
 from torch.nn.functional import interpolate
 from torch.utils.data.dataloader import DataLoader
-from segmentation.data.dataset import SegmentationDataset
-from segmentation.threshold.threshold import RangeImage
+
+from segmentation.data import SegmentationDataset
+from segmentation.models import RangeImage
 
 from torch.nn.modules.loss import BCELoss
 

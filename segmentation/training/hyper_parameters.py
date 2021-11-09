@@ -1,8 +1,8 @@
 from ray import tune
-from ray.tune import schedulers
 from ray.tune.schedulers import ASHAScheduler
 
-from segmentation.training.cnn import test_best_model, train
+from segmentation.training import create_test_best, create_train
+from segmentation.helper import create_cnn
 
 def trial_str_creator(trial):
     return f"trial_{trial.trial_id}"
@@ -23,6 +23,20 @@ def main(num_samples, max_num_epochs=10, gpus_per_trial=0.5):
         max_t=max_num_epochs,
         grace_period=1,
         reduction_factor=2
+    )
+
+    train = create_train(
+        create_cnn,
+        300,
+        None,
+        True
+    )
+
+    test_best_model = create_test_best(
+        create_cnn,
+        300,
+        None,
+        True
     )
 
     result = tune.run(
