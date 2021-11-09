@@ -42,15 +42,7 @@ def check_threshold(img):
         kernel = np.ones((l, l), np.uint8)
         dilate = cv2.dilate(hsv_threshold, kernel, iterations=m)
         dilate = cv2.cvtColor(dilate, cv2.COLOR_GRAY2RGB)
-        """
-        canny = cv2.Canny(img, l, u)
 
-        for i in range(5):
-            canny = cv2.dilate(canny, np.ones((m, m)))
-            canny = cv2.erode(canny, np.ones((m, m)))
-        
-        canny = cv2.dilate(canny, np.ones((m, m)))
-        """
     
 
     cv2.destroyAllWindows()

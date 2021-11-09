@@ -17,7 +17,7 @@ import torch.optim as optim
 import os
 
 # General params
-crop_size = 100
+crop_size = 300
 
 def train(config, checkpoint_dir=None):
     # CNN params
@@ -44,7 +44,7 @@ def train(config, checkpoint_dir=None):
     # Train 
     train_set = SegmentationDataset("/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/train_input", "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/train_output", crop_size)
 
-    split_abs = int(len(train_set) * 0.8)
+    split_abs = int(len(train_set) * 0.7)
     train_subset, valid_subset = random_split(train_set,  [split_abs, len(train_set) - split_abs])
 
     train_loader = DataLoader(train_subset, batch_size, shuffle=True, num_workers=8)
@@ -56,7 +56,7 @@ def train(config, checkpoint_dir=None):
         net.load_state_dict(model_state)
         optimizer.load_state_dict(optimizer_state)
     
-    max_steps = len(train_loader) / 10
+    max_steps = len(train_loader) / 100
 
     for epoch in range(10):
         running_loss = 0
@@ -85,7 +85,6 @@ def train(config, checkpoint_dir=None):
 
         val_losses = 0
         val_accuracy = 0
-        step = 0
         net.eval()
         for inputs, labels in valid_loader:
             with torch.no_grad():
@@ -103,7 +102,6 @@ def train(config, checkpoint_dir=None):
                 # compute validation accuracy
                 accuracy = torch.mean((labels == (output > 0.5).type(torch.uint8)).type(torch.float))
                 val_accuracy += accuracy.item()
-                step += 1
 
         with tune.checkpoint_dir(step=epoch) as checkpoint_dir:
             ck_path = os.path.join(checkpoint_dir, "checkpoint")
@@ -124,8 +122,6 @@ def test_best_model(best_trial):
     thin =  config["thin"]
     positional_encoding = config["positional_encoding"]
     padding = config["padding"]
-    learning_rate = config["learning_rate"]
-    batch_size = config["batch_size"]
 
     device = "cuda:0" if torch.cuda.is_available else "cpu"
 
@@ -155,8 +151,5 @@ def test_best_model(best_trial):
             accuracy = torch.mean((labels == (outputs > 0.5).type(torch.uint8)).type(torch.float))
             mean_accuracy += accuracy.item()
 
-            if i >= 22862:
-                break
-
-    mean_accuracy /= 22862 
+    mean_accuracy = mean_accuracy / len(valid_loader)
     best_trial(f"Best trial on validation set: {mean_accuracy}")

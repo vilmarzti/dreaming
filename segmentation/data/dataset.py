@@ -7,6 +7,16 @@ from torch.utils.data import Dataset
 
 from segmentation.helper.positional_embedding import positionalencoding2d_linear, positionalencoding2d_sin
 
+def normalize(image_channel):
+    max_size = np.amax(image_channel, axis=(1, 2))
+    max_size = np.expand_dims(max_size, axis=(1, 2))
+    image_channel = image_channel / max_size
+    return image_channel
+
+def scale_for_sigmoid(image_channel):
+    image_channel = (image_channel / 8.0) - 4.0
+    return image_channel
+
 class SegmentationDataset(Dataset):
     def __init__(self, input_path, output_path, crop_size, cvt_flag=None, add_encoding=True):
         self.crop_size = crop_size
@@ -23,19 +33,15 @@ class SegmentationDataset(Dataset):
         # Preprocessing input
         if cvt_flag == cv2.COLOR_BGR2GRAY:
             # Prepare for threshold net
-            max_size = np.amax(self.images_input, axis=(1, 2))
-            max_size = np.expand_dims(max_size, axis=(1, 2))
-            self.images_input = ((self.images_input / max_size) * 8.0) - 4.0
+            self.images_input = scale_for_sigmoid(normalize(self.images_input))
             self.images_input = np.expand_dims(self.images_input, axis=3)
         elif cvt_flag == cv2.COLOR_BGR2HSV:
             # Prepare for threshold net
-            self.images_input[:,:,:,0] = ((self.images_input[:,:,:,0] / 180.0) * 8.0) - 4.0
-            self.images_input[:,:,:,1] = ((self.images_input[:,:,:,1] / 255.0) * 8.0) - 4.0
-            self.images_input[:,:,:,2] = ((self.images_input[:,:,:,2] / 255.0) * 8.0) - 4.0
+            self.images_input[:,:,:,0] = scale_for_sigmoid(normalize(self.images_input[:,:,:,0]))
+            self.images_input[:,:,:,1] = scale_for_sigmoid(normalize(self.images_input[:,:,:,1]))
+            self.images_input[:,:,:,2] = scale_for_sigmoid(normalize(self.images_input[:,:,:,2]))
         else:  
-            max_size = np.amax(self.images_input, axis=(1, 2))
-            max_size = np.expand_dims(max_size, axis=(1, 2))
-            self.images_input /= max_size
+            self.images_input = normalize(self.images_input)
 
         # Prprocessing Output
         self.images_output = np.where(self.images_output < 128, 0, 1)
@@ -52,6 +58,7 @@ class SegmentationDataset(Dataset):
 
             # Add encoding
             self.images_input = np.concatenate([self.images_input, lin_encoding, sin_encoding], axis=3)
+
         self.images_input = np.transpose(self.images_input, [0, 3, 1, 2])
 
     def __len__(self):

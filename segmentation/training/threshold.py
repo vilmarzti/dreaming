@@ -1,3 +1,4 @@
+from torch.nn.functional import interpolate
 from torch.utils.data.dataloader import DataLoader
 from segmentation.data.dataset import SegmentationDataset
 from segmentation.threshold.threshold import RangeImage
@@ -43,6 +44,8 @@ def train(gray=True):
             optimizer.zero_grad()
 
             outputs = net(inputs)
+
+            outputs = interpolate(outputs, (crop_size, crop_size), mode="bilinear", align_corners=False)
             outputs = torch.squeeze(outputs)
 
             loss = criterion(outputs, labels)
@@ -69,6 +72,7 @@ def train(gray=True):
                 labels = labels.to(device)
 
                 outputs = net(inputs)
+                outputs = interpolate(outputs, (crop_size, crop_size), mode="bilinear", align_corners=False)
                 outputs = torch.squeeze(outputs)
 
                 loss = criterion(outputs, labels)

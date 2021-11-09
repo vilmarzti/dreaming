@@ -29,8 +29,8 @@ def main(num_samples, max_num_epochs=10, gpus_per_trial=0.5):
         tune.with_parameters(train),
         resources_per_trial={"cpu": 4, "gpu": gpus_per_trial},
         config=config,
-        metric="loss",
-        mode="min",
+        metric="accuracy",
+        mode="max",
         num_samples=num_samples,
         trial_dirname_creator=trial_str_creator,
         scheduler=scheduler,
@@ -49,4 +49,4 @@ def main(num_samples, max_num_epochs=10, gpus_per_trial=0.5):
     test_best_model(best_trial)
 
 if __name__ == "__main__":
-    main(20)
+    main(30)

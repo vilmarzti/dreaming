@@ -4,11 +4,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class Threshold(nn.Module):
-    def __init__(self, thresh=0.5):
+    def __init__(self, thres=None):
         super(Threshold, self).__init__()
         self.threshold = nn.Parameter(torch.rand(1, requires_grad=True).squeeze())
         self.scale = torch.tensor(1.0)
-        #self.scale = nn.Parameter(torch.rand(1, requires_grad=True).squeeze())
 
     def forward(self, x):
         x = torch.sigmoid((x + self.threshold) * self.scale)
@@ -45,13 +44,17 @@ class RangeImage(nn.Module):
     """
     def __init__(self, num_channels):
         super(RangeImage, self).__init__()
+        self.num_channels = num_channels
+
         self.ranges = nn.ModuleList([Range() for _ in range(num_channels)])
+        self.conv = nn.Conv2d(self.num_channels, 1, 4)
     
     def forward(self, x):
         channels = torch.unbind(x, 1)
         applied_ranges = [r(c) for c, r in zip(channels, self.ranges)]
         x = torch.stack(applied_ranges, 1)
-        x = torch.prod(x, 1, keepdim=True)
+        x = self.conv(x)
+        x = torch.sigmoid(torch.sum(x, 1, keepdim=True))
         return x
 
     def get_ranges(self):
