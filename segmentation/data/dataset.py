@@ -97,7 +97,7 @@ class TrainDataset(CNNDataset):
     def __init__(self, input_path, output_path, crop_size, cvt_flag=None, add_encoding=True, random_transforms=True):
         super().__init__(input_path, output_path, cvt_flag, add_encoding)
 
-        self.random_transforms = random_transforms
+        self.random_transforms = random_transforms and not cvt_flag
 
         # Define the number of crops
         if type(crop_size) is int:
@@ -112,7 +112,7 @@ class TrainDataset(CNNDataset):
 
         self.total_crops = self.num_crops_x * self.num_crops_y
 
-        if random_transforms:
+        if random_transforms and not cvt_flag:
             # Prepare PCA for the random pixel pertubations
             b_values = self.images_input[:,0].flatten()
             g_values = self.images_input[:,1].flatten()
@@ -197,8 +197,8 @@ class TestDataset(CNNDataset):
         index_x = (idx % self.split_factor) * self.split_x_size
         index_y = ((idx // self.split_factor) % self.split_factor) * self.split_y_size
 
-        inputs = self.images_input[img_num, :, index_x: index_x + self.split_x_size, index_y : index_y + self.split_y_size]
-        outputs = self.images_output[img_num, index_x: index_x + self.split_x_size, index_y : index_y + self.split_y_size]
+        inputs = self.images_input[img_num, :, index_y: index_y + self.split_y_size, index_x : index_x + self.split_x_size]
+        outputs = self.images_output[img_num, index_y: index_y + self.split_y_size, index_x : index_x + self.split_x_size]
 
         return inputs, outputs
 

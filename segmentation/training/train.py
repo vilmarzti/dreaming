@@ -2,7 +2,7 @@ from torch.nn.functional import interpolate
 from torch.nn.modules.loss import BCELoss
 from torch.utils.data.dataset import random_split
 
-from segmentation.data.dataset import SegmentationDataset
+from segmentation.data.dataset import TrainDataset 
 
 from torch.utils.data import DataLoader
 
@@ -34,7 +34,7 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding):
         optimizer = optim.Adam(net.parameters(), lr=learning_rate)
 
         # Train 
-        train_set = SegmentationDataset(
+        train_set = TrainDataset(
             "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/train_input",
             "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/train_output",
             crop_size,

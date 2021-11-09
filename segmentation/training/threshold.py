@@ -1,7 +1,7 @@
 from torch.nn.functional import interpolate
 from torch.utils.data.dataloader import DataLoader
 
-from segmentation.data import SegmentationDataset
+from segmentation.data import TrainDataset, TestDataset 
 from segmentation.models import RangeImage
 
 from torch.nn.modules.loss import BCELoss
@@ -9,7 +9,6 @@ from torch.nn.modules.loss import BCELoss
 import torch
 import torch.optim as optim
 
-import cv2
 from cv2 import COLOR_BGR2HSV, COLOR_BGR2GRAY
 
 import numpy as np
@@ -20,7 +19,7 @@ def train(gray=True):
     flag = COLOR_BGR2GRAY if gray else COLOR_BGR2HSV
     lr = 0.01
     batch_size = 32
-    max_steps = 4000
+    max_steps = 100
 
     # CNN
     net = RangeImage(1) if gray else RangeImage(3)
@@ -29,8 +28,8 @@ def train(gray=True):
     criterion = BCELoss()
     optimizer = optim.Adam(net.parameters(), lr=lr)
 
-    train_set = SegmentationDataset("/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/train_input", "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/train_output", crop_size, flag, False)
-    valid_set = SegmentationDataset("/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_input", "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_output", crop_size, flag, False)
+    train_set = TrainDataset("/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/train_input", "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/train_output", crop_size, flag, False)
+    valid_set = TestDataset("/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_input", "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_output", 5, flag, False)
 
     train_loader = DataLoader(train_set, batch_size, shuffle=True, num_workers=8)
     valid_loader = DataLoader(valid_set, batch_size, shuffle=True, num_workers=8)
