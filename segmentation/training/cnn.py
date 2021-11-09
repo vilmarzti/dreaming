@@ -5,6 +5,7 @@ from torch.utils.data.dataset import random_split
 
 from segmentation.data.dataset import SegmentationDataset
 from segmentation.cnn.cnn import  CNNSegmentation
+from segmentation.helper import create_cnn
 
 from torch.utils.data import DataLoader
 
@@ -20,22 +21,16 @@ import os
 crop_size = 300
 
 def train(config, checkpoint_dir=None):
-    # CNN params
-    kernel_size = config["kernel_size"]
-    input_channels = 3
-    intermidiate_channels = config["intermidiate_channels"]
-    num_layers = config["num_layers"]
-    thin =  config["thin"]
-    positional_encoding = config["positional_encoding"]
-    padding = config["padding"]
+    # Other params
     learning_rate = config["learning_rate"]
     batch_size = config["batch_size"]
 
     # check device
     device = "cuda:0" if torch.cuda.is_available else "cpu"
 
-    # CNN
-    net = CNNSegmentation(kernel_size, input_channels, intermidiate_channels, num_layers, thin, positional_encoding, padding)
+    # Model
+    net = create_cnn(config)
+
     net = net.to(device)
 
     criterion = BCELoss()
@@ -114,19 +109,10 @@ def train(config, checkpoint_dir=None):
 def test_best_model(best_trial):
     config = best_trial.config
 
-    # setup params
-    kernel_size = config["kernel_size"]
-    input_channels = 3
-    intermidiate_channels = config["intermidiate_channels"]
-    num_layers = config["num_layers"]
-    thin =  config["thin"]
-    positional_encoding = config["positional_encoding"]
-    padding = config["padding"]
-
     device = "cuda:0" if torch.cuda.is_available else "cpu"
 
     # create net from params
-    net = CNNSegmentation(kernel_size, input_channels, intermidiate_channels, num_layers, thin, positional_encoding, padding)
+    net = create_cnn(config)
     net.to(device)
 
     # load model
