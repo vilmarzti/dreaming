@@ -60,5 +60,4 @@ if __name__ == "__main__":
 
     individual_zero = compute_individual_zero(full_paths)
 
-    os.chdir("./Few-Shot-Patch-Based-Training/_tools")
     add_gauss.loop(max_threshold, 10, copy_file, individual_zero)
