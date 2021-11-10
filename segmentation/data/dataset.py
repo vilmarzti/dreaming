@@ -20,8 +20,8 @@ def scale_for_sigmoid(image_channel):
     return image_channel
 
 def subtract_mean(images):
-    # Assumes that the last dimension are the channesl that represent BGR values
-    bgr_mean = np.mean(images, axis=(0, 1, 2))
+    # This mean rgb values are from scripts/preprocessing/get_mean_rgb
+    bgr_mean = [16.10248639, 22.22626978, 27.72004287]
     bgr_mean = np.expand_dims(bgr_mean, axis=(0, 1, 2))
 
     # Center the BGR values
@@ -200,6 +200,8 @@ class TestDataset(CNNDataset):
         return self.splits_per_image * len(self.images_input)
     
     def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
 
         img_num = idx // self.splits_per_image
         index_x = (idx % self.split_factor) * self.split_x_size
