@@ -43,7 +43,7 @@ def main(num_samples, max_num_epochs=10, gpus_per_trial=0.5):
         tune.with_parameters(train),
         resources_per_trial={"cpu": 4, "gpu": gpus_per_trial},
         config=config,
-        metric="accuracy",
+        metric="val_accuracy",
         mode="max",
         num_samples=num_samples,
         trial_dirname_creator=trial_str_creator,
@@ -56,9 +56,9 @@ def main(num_samples, max_num_epochs=10, gpus_per_trial=0.5):
 
     print("Best trial config: {}".format(best_trial.config))
     print("Best trial final validation loss: {}".format(
-        best_trial.last_result["loss"]))
+        best_trial.last_result["val_loss"]))
     print("Best trial final validation accuracy: {}".format(
-        best_trial.last_result["accuracy"]))
+        best_trial.last_result["val_accuracy"]))
     
     test_best_model(best_trial)
 

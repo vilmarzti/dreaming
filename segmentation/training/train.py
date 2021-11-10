@@ -11,6 +11,7 @@ from ray import tune
 import torch
 import torch.optim as optim
 
+import cv2
 import os
 
 # General params
@@ -94,8 +95,9 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True)
                     labels = labels.to(device)
 
                     output = net(inputs)
+
                     output = interpolate(output, (inputs.shape[2], inputs.shape[3]), mode="bilinear", align_corners=False) if not padding else output
-                    output = torch.squeeze(output)
+                    output = torch.squeeze(output, 1)
 
                     # compute validation loss
                     val_loss = criterion(output, labels)
@@ -114,11 +116,11 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True)
                     ck_path = os.path.join(checkpoint_dir, "checkpoint")
                     torch.save((net.state_dict(), optimizer.state_dict()), ck_path)
 
-                tune.report(loss=mean_val_loss, accuracy=mean_val_acc, training_loss=mean_train_loss)
+                tune.report(val_loss=mean_val_loss, val_accuracy=mean_val_acc, train_loss=mean_train_loss)
             else:
-                print(f"Mean validation_loss: {mean_val_loss}")    
-                print(f"Mean accuracy: {mean_val_acc}")
-                print(f"Mean Training loss accuracy: {mean_train_loss}")
+                print(f"Mean validation_loss:     {mean_val_loss}")    
+                print(f"Mean Training loss:       {mean_train_loss}")
+                print(f"Mean validation accuracy: {mean_val_acc}")
     
     return train
 
