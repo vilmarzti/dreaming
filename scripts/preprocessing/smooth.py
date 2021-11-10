@@ -60,14 +60,9 @@ def smooth_image(images, rang, i):
 
     return smoothed_image
 
-    # save image
-    smoothed_path = path.join(smooth_folder, f"{i + 1:04}.png")
-    cv2.imwrite(str(smoothed_path), smoothed_image)
-
 def save_image(smooth_folder, index, image):
     smoothed_path = path.join(smooth_folder, f"{index + 1:04}.png")
     cv2.imwrite(str(smoothed_path), image)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=""" Creates masks for body""")

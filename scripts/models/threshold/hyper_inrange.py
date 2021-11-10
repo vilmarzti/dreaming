@@ -46,8 +46,8 @@ def main(num_samples, max_num_epochs=10, gpus_per_trial=0.5):
         num_samples=num_samples,
         trial_dirname_creator=trial_str_creator,
         scheduler=scheduler,
-        local_dir="./data/cnn_raytune",
-        name="cnn_segment"
+        local_dir="./data/threshold_raytune",
+        name="threshold"
     )
 
     best_trial = result.get_best_trial("loss", "min", "last")
