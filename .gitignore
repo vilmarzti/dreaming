@@ -1,9 +1,9 @@
-project_env
-masks
-smooth_masks
+/project_env
+/data
+/.vscode
+/.gitignore
+/config
+
 __pycache__
 *.mp4
-.vscode
-cnn_raytune
 *.egg-info
-/data
