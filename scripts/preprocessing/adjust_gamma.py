@@ -33,7 +33,6 @@ def adjust_gamma(gamma, input_path, output_path):
         out_img = cv2.LUT(img, lut)
         cv2.imwrite(output_paths[i], out_img)
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=""" Creates masks for body""")
 
