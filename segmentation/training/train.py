@@ -59,7 +59,9 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True)
             net.load_state_dict(model_state)
             optimizer.load_state_dict(optimizer_state)
         
-        max_steps_train = len(train_loader) // 100
+        # Train on equal num of expamples no matter the batchsize
+        # len(train_loader) = len(train_set)/ batch_size
+        max_steps_train = len(train_loader) // ( 30 * batch_size)
 
         for epoch in range(20):
             running_loss = 0

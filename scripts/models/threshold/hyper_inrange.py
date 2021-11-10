@@ -9,9 +9,9 @@ import cv2
 def trial_str_creator(trial):
     return f"trial_{trial.trial_id}"
 
-def main(num_samples, max_num_epochs=10, gpus_per_trial=0.5):
+def main(num_samples, max_num_epochs=20, gpus_per_trial=0.5):
     config = {
-        "kernel_size": tune.randint(3, 10),
+        "kernel_size": tune.randint(1, 10),
         "padding": tune.choice([False]),
         "learning_rate": tune.loguniform(1e-4, 1e-1),
         "batch_size": tune.choice([8, 16, 32])
@@ -41,7 +41,7 @@ def main(num_samples, max_num_epochs=10, gpus_per_trial=0.5):
         tune.with_parameters(train),
         resources_per_trial={"cpu": 4, "gpu": gpus_per_trial},
         config=config,
-        metric="accuracy",
+        metric="val_accuracy",
         mode="max",
         num_samples=num_samples,
         trial_dirname_creator=trial_str_creator,

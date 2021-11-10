@@ -44,13 +44,14 @@ class Up(nn.Module):
         self.in_channels = in_channels
         self.out_channels = out_channels
 
-        self.convT = nn.ConvTranspose2d(in_channels, out_channels)
+        self.convT = nn.ConvTranspose2d(in_channels, out_channels, 2, stride=2)
         self.conv = DoubleConv(in_channels, out_channels)
     
     def forward(self, x1, x2):
         position_x = (x2.shape[2] - x1.shape[2]) // 2
         position_y = (x2.shape[3] - x1.shape[3]) // 2
 
+        breakpoint()
         x2_cut = x2[:,:,position_x: position_x + x1.shape[2], position_y: position_y + x1.shape[3]]
 
         upscaled = self.convT(x1)
@@ -64,25 +65,26 @@ class UNet(nn.Module):
 
         self.deepness = deepness
         self.in_channels = in_channels
-        self.down_channels = [(4 * (2 ** i), 3 * (4 ** (i + 1))) for i in range(-1, deepness)]
-        self.up_channels = [(j, i) for i, j in self.down_channels][::-1]
+        self.down_channels = [[3 * (2 ** i), 3 * (2 ** (i + 1))]for i in range(-1, deepness)]
+        self.up_channels = [[j, i] for i, j in self.down_channels[::-1]]
 
         self.down_channels[0][0] = in_channels
-        self.up_channels[deepness][1] = self.up_channels
 
         self.in_conv = DoubleConv(self.down_channels[0][0], self.down_channels[0][1])
 
-        self.downs = nn.Modulelist([Down(ins, outs) for ins, outs in self.down_channels[1:]])
-        self.ups = nn.Modulelist([Up(ins, outs) for ins, outs in self.up_channels[:-1]])
+        self.downs = nn.ModuleList([Down(ins, outs) for ins, outs in self.down_channels[1:]])
+        self.ups = nn.ModuleList([Up(ins, outs) for ins, outs in self.up_channels[:-1]])
 
-        self.conv_out = nn.Conv2d(self.up_channels[:-2][0], 1, 1)
+        self.conv_out = nn.Conv2d(self.up_channels[-2][1], 1, 1)
     
     def forward(self, x):
         down_out = []
         down_out.append(self.in_conv(x))
 
-        for i, down in enumerate(self.downs):
-            down_out.append(down(down_out[i]))
+        for i in range(self.deepness):
+            next_input = down_out[i]
+            out = self.downs[i](next_input)
+            down_out.append(out)
 
         up_in = []
         up_in.append(down_out[-1])
@@ -91,7 +93,10 @@ class UNet(nn.Module):
         down_out = down_out[1:]
 
         for i, up in enumerate(self.ups):
-            up_in.append(up(up_in[i], down_out[i]))
+            next_up_input = up_in[i]
+            next_skip_input = down_out[i]
+            output = up(next_up_input, next_skip_input)
+            up_in.append(output)
         
         out = self.conv_out(up_in[-1])
         return out
