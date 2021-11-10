@@ -42,19 +42,19 @@ class RangeImage(nn.Module):
             W and H are the image dimension
 
     """
-    def __init__(self, num_channels):
+    def __init__(self, num_channels, kernel_size):
         super(RangeImage, self).__init__()
         self.num_channels = num_channels
 
         self.ranges = nn.ModuleList([Range() for _ in range(num_channels)])
-        self.conv = nn.Conv2d(self.num_channels, 1, 4)
+        self.conv = nn.Conv2d(self.num_channels, 1, kernel_size)
     
     def forward(self, x):
         channels = torch.unbind(x, 1)
         applied_ranges = [r(c) for c, r in zip(channels, self.ranges)]
         x = torch.stack(applied_ranges, 1)
         x = self.conv(x)
-        x = torch.sigmoid(torch.sum(x, 1, keepdim=True))
+        x = torch.sigmoid(x)
         return x
 
     def get_ranges(self):

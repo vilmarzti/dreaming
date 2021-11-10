@@ -2,11 +2,10 @@ from torch.nn.functional import interpolate
 from torch.nn.modules.loss import BCELoss
 from torch.utils.data.dataset import random_split
 
-from segmentation.data.dataset import TrainDataset 
+from segmentation.data.dataset import TestDataset, TrainDataset 
 
 from torch.utils.data import DataLoader
 
-import ray
 from ray import tune
 
 import torch
@@ -111,7 +110,7 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding):
     
     return train
 
-def create_test_best(create_model, crop_size, cvt_flag, add_encoding):
+def create_test_best(create_model, split_size, cvt_flag, add_encoding):
     def test_best_model(best_trial):
         config = best_trial.config
 
@@ -127,10 +126,10 @@ def create_test_best(create_model, crop_size, cvt_flag, add_encoding):
         net.load_state_dict(model_state)
 
         # Get DAtaloader
-        valid_set = SegmentationDataset(
+        valid_set = TestDataset(
             "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_input",
             "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_output",
-            crop_size,
+            split_size,
             cvt_flag,
             add_encoding
         )

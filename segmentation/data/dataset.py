@@ -112,7 +112,7 @@ class TrainDataset(CNNDataset):
 
         self.total_crops = self.num_crops_x * self.num_crops_y
 
-        if random_transforms and not cvt_flag:
+        if self.random_transforms:
             # Prepare PCA for the random pixel pertubations
             b_values = self.images_input[:,0].flatten()
             g_values = self.images_input[:,1].flatten()
@@ -199,6 +199,9 @@ class TestDataset(CNNDataset):
 
         inputs = self.images_input[img_num, :, index_y: index_y + self.split_y_size, index_x : index_x + self.split_x_size]
         outputs = self.images_output[img_num, index_y: index_y + self.split_y_size, index_x : index_x + self.split_x_size]
+
+        inputs = np.single(inputs)
+        outputs = np.single(outputs)
 
         return inputs, outputs
 

@@ -9,7 +9,7 @@ from os import path
 sys.path.append("../Few-Shot-Patch-Based-Training/_tools/")
 import config
 
-def background_substract(image_paths):
+def background_substract(image_paths, background_substract):
     bg_substractor = cv2.createBackgroundSubstractorMOG2(detectShadows=True)
     img = cv2.imread(image_paths[0])
 

@@ -2,19 +2,17 @@ from ray import tune
 from ray.tune.schedulers import ASHAScheduler
 
 from segmentation.training import create_test_best, create_train
-from segmentation.helper import create_cnn
+from segmentation.helper import create_rangeimage
+
+import cv2
 
 def trial_str_creator(trial):
     return f"trial_{trial.trial_id}"
 
 def main(num_samples, max_num_epochs=10, gpus_per_trial=0.5):
     config = {
-        "kernel_size": tune.randint(3, 8),
-        "intermidiate_channels": tune.randint(1, 5),
-        "num_layers": tune.randint(2, 5),
-        "thin": tune.choice([True, False]),
-        "positional_encoding": tune.choice(["sin", "linear", None]),
-        "padding": tune.choice(["reflection", "zero", "replication", None]),
+        "kernel_size": tune.randint(3, 10),
+        "padding": tune.choice([False]),
         "learning_rate": tune.loguniform(1e-4, 1e-1),
         "batch_size": tune.choice([8, 16, 32])
     }
@@ -26,17 +24,17 @@ def main(num_samples, max_num_epochs=10, gpus_per_trial=0.5):
     )
 
     train = create_train(
-        create_cnn,
+        create_rangeimage,
         300,
-        None,
-        True
+        cv2.COLOR_BGR2HSV,
+        False
     )
 
     test_best_model = create_test_best(
-        create_cnn,
-        300,
-        None,
-        True
+        create_rangeimage,
+        5,
+        cv2.COLOR_BGR2HSV,
+        False 
     )
 
     result = tune.run(

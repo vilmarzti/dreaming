@@ -17,12 +17,12 @@ def train(gray=True):
     crop_size = 300
     device = "cuda:0" if torch.cuda.is_available else "cpu"
     flag = COLOR_BGR2GRAY if gray else COLOR_BGR2HSV
-    lr = 0.01
-    batch_size = 32
+    lr = 0.0001
+    batch_size = 10
     max_steps = 100
 
     # CNN
-    net = RangeImage(1) if gray else RangeImage(3)
+    net = RangeImage(1, 4) if gray else RangeImage(3, 4)
     net = net.to(device)
 
     criterion = BCELoss()
@@ -34,7 +34,7 @@ def train(gray=True):
     train_loader = DataLoader(train_set, batch_size, shuffle=True, num_workers=8)
     valid_loader = DataLoader(valid_set, batch_size, shuffle=True, num_workers=8)
 
-    for epoch in range(2):
+    for epoch in range(5):
         train_loss = 0
         train_accuracy = 0
         for i, (inputs, labels) in enumerate(train_loader):
@@ -56,9 +56,9 @@ def train(gray=True):
             train_accuracy += accuracy.item()
             train_loss += loss.item()
 
-            if i % (max_steps / 10) == (max_steps / 10) - 1:
-                train_loss /= (max_steps / 10)
-                train_accuracy /= (max_steps / 10)
+            if i % (max_steps / 2) == (max_steps / 2) - 1:
+                train_loss /= (max_steps / 2)
+                train_accuracy /= (max_steps / 2)
                 print(f"Train loss: {train_loss} Train accuracy: {train_accuracy}")
             
             if i >= max_steps:
@@ -72,7 +72,7 @@ def train(gray=True):
                 labels = labels.to(device)
 
                 outputs = net(inputs)
-                outputs = interpolate(outputs, (crop_size, crop_size), mode="bilinear", align_corners=False)
+                outputs = interpolate(outputs, (inputs.shape[2], inputs.shape[3]), mode="bilinear", align_corners=False)
                 outputs = torch.squeeze(outputs)
 
                 loss = criterion(outputs, labels)
@@ -82,11 +82,9 @@ def train(gray=True):
                 valid_accuracy += accuracy.item()
                 valid_loss += loss.item()
 
-                if i >= max_steps:
-                    valid_accuracy /= max_steps
-                    valid_loss /= max_steps
-                    print(f"Validation loss: {valid_loss} Validation accuracy: {valid_accuracy}")
-                    break
+            valid_accuracy /= len(valid_loader)
+            valid_loss /= len(valid_loader) 
+            print(f"Validation loss: {valid_loss} Validation accuracy: {valid_accuracy}")
 
     
     if gray:
