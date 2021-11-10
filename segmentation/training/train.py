@@ -14,7 +14,7 @@ import torch.optim as optim
 import os
 
 # General params
-def create_train(create_model, crop_size, cvt_flag, add_encoding):
+def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True):
     def train(config, checkpoint_dir=None):
         # Other params
         learning_rate = config["learning_rate"]
@@ -100,13 +100,19 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding):
                     accuracy = torch.mean((labels == (output > 0.5).type(torch.uint8)).type(torch.float))
                     val_accuracy += accuracy.item()
 
-            with tune.checkpoint_dir(step=epoch) as checkpoint_dir:
-                ck_path = os.path.join(checkpoint_dir, "checkpoint")
-                torch.save((net.state_dict(), optimizer.state_dict()), ck_path)
 
             mean_val_loss = val_losses / len(valid_loader)
             mean_val_acc = val_accuracy / len(valid_loader)
-            tune.report(loss=mean_val_loss, accuracy=mean_val_acc, training_loss=running_loss/max_steps)
+
+            if tune and use_tune:
+                with tune.checkpoint_dir(step=epoch) as checkpoint_dir:
+                    ck_path = os.path.join(checkpoint_dir, "checkpoint")
+                    torch.save((net.state_dict(), optimizer.state_dict()), ck_path)
+                tune.report(loss=mean_val_loss, accuracy=mean_val_acc, training_loss=running_loss/max_steps)
+            else:
+                print(f"Mean validation_loss: {mean_val_loss}")    
+                print(f"Mean accuracy: {mean_val_acc}")
+                print(f"Mean Training loss accuracy: {running_loss/max_steps}")
     
     return train
 

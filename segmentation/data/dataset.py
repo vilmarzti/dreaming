@@ -123,7 +123,7 @@ class TrainDataset(CNNDataset):
             pca.fit(bgr_values)
 
             self.pca_components = pca.components_
-            self.eigen_values = pca.explained_variance_
+            self.eigen_values = pca.explained_variance_ratio_
 
     def __len__(self):
         return self.total_crops* len(self.images_input)
@@ -154,7 +154,9 @@ class TrainDataset(CNNDataset):
     
     def random_transform(self, inputs, outputs):
         inputs, outputs = self.random_flip(inputs, outputs)
+        inputs, outputs = self.random_rotate(inputs, outputs)
         inputs, outputs = self.random_pertubations(inputs, outputs)
+        inputs, outputs = inputs.copy(), outputs.copy()
         return inputs, outputs
     
     def random_flip(self, inputs, outputs):
@@ -167,6 +169,12 @@ class TrainDataset(CNNDataset):
         if np.random.rand() > 0.5:
             inputs = np.flip(inputs, 2)
             outputs = np.flip(outputs, 1)
+        return inputs, outputs
+
+    def random_rotate(self, inputs, outputs):
+        k = np.random.randint(4)
+        inputs = np.rot90(inputs, k, axes=(1, 2))
+        outputs = np.rot90(outputs, k, axes=(0, 1))
         return inputs, outputs
 
     # Taken from the alexNet paper
