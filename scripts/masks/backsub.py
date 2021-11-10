@@ -2,15 +2,17 @@ import argparse
 import os
 import cv2
 
-import numpy as np
-
 from os import path
 
+import sys
 sys.path.append("../Few-Shot-Patch-Based-Training/_tools/")
 import config
 
-def background_substract(image_paths, background_substract):
-    bg_substractor = cv2.createBackgroundSubstractorMOG2(detectShadows=True)
+import pybgs as bgs
+
+def background_substract(image_paths):
+    #bg_substractor = cv2.createBackgroundSubstractorMOG2(detectShadows=True)
+    bg_substractor = bgs.MultiLayer()
     img = cv2.imread(image_paths[0])
 
     masks = []

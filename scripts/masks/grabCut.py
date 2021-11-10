@@ -37,13 +37,15 @@ def check_threshold(img):
         u = cv2.getTrackbarPos('U', 'image')
         m = cv2.getTrackbarPos('M', 'image')
 
+        breakpoint()
         hsv_image = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         hsv_threshold = cv2.inRange(hsv_image, (10, 0, 8), (39, 170, 255))
+        dilate = hsv_threshold
+        """
         kernel = np.ones((l, l), np.uint8)
         dilate = cv2.dilate(hsv_threshold, kernel, iterations=m)
         dilate = cv2.cvtColor(dilate, cv2.COLOR_GRAY2RGB)
-
-    
+        """
 
     cv2.destroyAllWindows()
 
@@ -53,6 +55,7 @@ def create_graph_cut(image):
 
     hsv_image = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     img = cv2.GaussianBlur(img, (5, 5), 0)
+    check_threshold(img)
 
     # Mask obtained through threshold
     hsv_threshold = cv2.inRange(hsv_image, (10, 0, 8), (39, 170, 255))

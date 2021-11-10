@@ -41,11 +41,16 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True)
             add_encoding
         )
 
-        split_abs = int(len(train_set) * 0.7)
-        train_subset, valid_subset = random_split(train_set,  [split_abs, len(train_set) - split_abs])
+        valid_set = TestDataset(
+            "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_input",
+            "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_output",
+            5,
+            cvt_flag,
+            add_encoding
+        )
 
-        train_loader = DataLoader(train_subset, batch_size, shuffle=True, num_workers=8)
-        valid_loader = DataLoader(valid_subset, batch_size, shuffle=True, num_workers=8)
+        train_loader = DataLoader(train_set, batch_size, shuffle=True, num_workers=8)
+        valid_loader = DataLoader(valid_set, 1)
 
         if checkpoint_dir:
             checkpoint = os.path_join(checkpoint_dir, "checkpoint")
@@ -54,9 +59,8 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True)
             optimizer.load_state_dict(optimizer_state)
         
         max_steps_train = len(train_loader) // 100
-        max_steps_valid = len(valid_loader) // 100
 
-        for epoch in range(10):
+        for epoch in range(20):
             running_loss = 0
             net.train()
             for i, data in enumerate(train_loader):
@@ -90,30 +94,26 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True)
                     labels = labels.to(device)
 
                     output = net(inputs)
-                    output = interpolate(output, (crop_size, crop_size), mode="bilinear", align_corners=False) if not padding else output
+                    output = interpolate(output, (inputs.shape[2], inputs.shape[3]), mode="bilinear", align_corners=False) if not padding else output
                     output = torch.squeeze(output)
 
-                    if output.shape[1] != labels.shape[1] or  output.shape[2] != labels.shape[2]:
-                        breakpoint()
                     # compute validation loss
-                    val_loss = criterion(outputs, labels)
+                    val_loss = criterion(output, labels)
                     val_losses += val_loss.item()
 
                     # compute validation accuracy
                     accuracy = torch.mean((labels == (output > 0.5).type(torch.uint8)).type(torch.float))
                     val_accuracy += accuracy.item()
-                    if i >= max_steps_valid:
-                        break
-
 
             mean_train_loss = running_loss / max_steps_train
-            mean_val_loss = val_losses / max_steps_valid
-            mean_val_acc = val_accuracy / max_steps_valid
+            mean_val_loss = val_losses / len(valid_loader)
+            mean_val_acc = val_accuracy / len(valid_loader)
 
             if tune and use_tune:
                 with tune.checkpoint_dir(step=epoch) as checkpoint_dir:
                     ck_path = os.path.join(checkpoint_dir, "checkpoint")
                     torch.save((net.state_dict(), optimizer.state_dict()), ck_path)
+
                 tune.report(loss=mean_val_loss, accuracy=mean_val_acc, training_loss=mean_train_loss)
             else:
                 print(f"Mean validation_loss: {mean_val_loss}")    
@@ -125,6 +125,7 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True)
 def create_test_best(create_model, split_size, cvt_flag, add_encoding):
     def test_best_model(best_trial):
         config = best_trial.config
+        padding = config["padding"]
 
         device = "cuda:0" if torch.cuda.is_available else "cpu"
 
@@ -139,8 +140,8 @@ def create_test_best(create_model, split_size, cvt_flag, add_encoding):
 
         # Get DAtaloader
         valid_set = TestDataset(
-            "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_input",
-            "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_output",
+            "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/test_input",
+            "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/test_output",
             split_size,
             cvt_flag,
             add_encoding
@@ -155,7 +156,7 @@ def create_test_best(create_model, split_size, cvt_flag, add_encoding):
                 labels = labels.to(device)
 
                 outputs = net(inputs)
-                outputs = interpolate(outputs, (crop_size, crop_size), mode="bilinear", align_corners=False) if not padding else outputs
+                outputs = interpolate(outputs, (split_size, split_size), mode="bilinear", align_corners=False) if not padding else outputs
     
                 accuracy = torch.mean((labels == (outputs > 0.5).type(torch.uint8)).type(torch.float))
                 mean_accuracy += accuracy.item()

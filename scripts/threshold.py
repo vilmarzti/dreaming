@@ -32,7 +32,7 @@ def train(gray=True):
     valid_set = TestDataset("/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_input", "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_output", 5, flag, False)
 
     train_loader = DataLoader(train_set, batch_size, shuffle=True, num_workers=8)
-    valid_loader = DataLoader(valid_set, batch_size, shuffle=True, num_workers=8)
+    valid_loader = DataLoader(valid_set, 1, shuffle=True, num_workers=8)
 
     for epoch in range(5):
         train_loss = 0
