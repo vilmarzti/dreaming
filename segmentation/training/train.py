@@ -51,14 +51,14 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True,
         valid_loader = DataLoader(valid_set, 1)
 
         if checkpoint_dir:
-            checkpoint = os.path_join(checkpoint_dir, "checkpoint")
+            checkpoint = os.path.join(checkpoint_dir, "checkpoint")
             model_state, optimizer_state = torch.load(checkpoint)
             net.load_state_dict(model_state)
             optimizer.load_state_dict(optimizer_state)
         
         # Train on equal num of expamples no matter the batchsize
         # len(train_loader) = len(train_set)/ batch_size
-        max_steps_train = len(train_loader) // (150 / batch_size)
+        max_steps_train = len(train_loader) // (600 / batch_size)
 
         for epoch in range(1000):
             running_loss = 0
