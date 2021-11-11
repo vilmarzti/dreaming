@@ -7,7 +7,7 @@ from segmentation.helper import create_cnn
 def trial_str_creator(trial):
     return f"trial_{trial.trial_id}"
 
-def main(num_samples, max_num_epochs=10, gpus_per_trial=0.5):
+def main(num_samples, max_num_epochs=35, gpus_per_trial=0.5):
     config = {
         "kernel_size": tune.randint(3, 10),
         "intermidiate_channels": tune.randint(1, 5),
@@ -48,11 +48,11 @@ def main(num_samples, max_num_epochs=10, gpus_per_trial=0.5):
         num_samples=num_samples,
         trial_dirname_creator=trial_str_creator,
         scheduler=scheduler,
-        local_dir="./data/cnn_raytune",
+        local_dir="./data/raytune",
         name="cnn_segment"
     )
 
-    best_trial = result.get_best_trial("loss", "min", "last")
+    best_trial = result.get_best_trial("val_loss", "max", "last")
 
     print("Best trial config: {}".format(best_trial.config))
     print("Best trial final validation loss: {}".format(
@@ -63,4 +63,4 @@ def main(num_samples, max_num_epochs=10, gpus_per_trial=0.5):
     test_best_model(best_trial)
 
 if __name__ == "__main__":
-    main(30)
+    main(50)
