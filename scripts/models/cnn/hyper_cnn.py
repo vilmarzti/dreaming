@@ -6,6 +6,7 @@ from ray.tune.suggest.hyperopt import HyperOptSearch
 from segmentation.training import create_test_best, create_train
 from segmentation.helper import create_cnn
 
+
 def trial_str_creator(trial):
     return f"trial_{trial.trial_id}"
 
@@ -21,7 +22,11 @@ def main(num_samples, max_num_epochs=30, gpus_per_trial=0.5):
         "batch_size": tune.choice([8, 16, 32])
     }
 
-    search_alg = HyperOptSearch(metric="val_accuracy", mode="max")
+    search_alg = HyperOptSearch(
+        metric="val_accuracy",
+        mode="max",
+        n_initial_points=5
+    )
 
     scheduler = HyperBandScheduler(
         max_t=max_num_epochs,
@@ -52,7 +57,7 @@ def main(num_samples, max_num_epochs=30, gpus_per_trial=0.5):
         scheduler=scheduler,
         local_dir="./data/raytune",
         name="cnn",
-        search_alg=search_alg
+        search_alg=search_alg,
     )
 
     best_trial = result.get_best_trial("val_loss", "max", "last")
