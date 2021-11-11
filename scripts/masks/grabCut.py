@@ -1,12 +1,13 @@
 import cv2
 import argparse
 import os
-import time
 
 import numpy as np
 import multiprocessing as mp
 
 from os import path
+
+from segmentation.helper import get_image_paths, get_output_paths
 
 import sys
 sys.path.append("../Few-Shot-Patch-Based-Training/_tools/")
@@ -18,34 +19,37 @@ def check_threshold(img):
     hsv_image = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     hsv_threshold = cv2.inRange(hsv_image, (10, 0, 8), (39, 170, 255))
     kernel = np.ones((7, 7), np.uint8)
-    dilate = cv2.dilate(hsv_threshold, kernel, iterations=10)
-    dilate = cv2.cvtColor(dilate, cv2.COLOR_GRAY2RGB)
+    dilate = cv2.dilate(hsv_threshold, kernel, iterations=5)
+
 
     cv2.namedWindow('image') # make a window with name 'image'
-    cv2.createTrackbar('L', 'image', 0, 255, print) #lower threshold trackbar for window 'image
-    cv2.createTrackbar('U', 'image', 0, 255, print) #upper threshold trackbar for window 'image
-    cv2.createTrackbar('M', 'image', 0, 255, print) #upper threshold trackbar for window 'image
+    cv2.createTrackbar('Lu', 'image', 0, 255, print) #lower threshold trackbar for window 'image
+    cv2.createTrackbar('Ll', 'image', 0, 255, print) #lower threshold trackbar for window 'image
+    cv2.createTrackbar('Uu', 'image', 0, 255, print) #upper threshold trackbar for window 'image
+    cv2.createTrackbar('Ul', 'image', 0, 255, print) #upper threshold trackbar for window 'image
+    cv2.createTrackbar('Mu', 'image', 0, 255, print) #upper threshold trackbar for window 'image
+    cv2.createTrackbar('Ml', 'image', 0, 255, print) #upper threshold trackbar for window 'image
 
     while(1):
-        numpy_horizontal_concat = np.concatenate((img, dilate), axis=1) # to display image side by side
-        cv2.imshow('image', numpy_horizontal_concat)
+        cv2.imshow('image', dilate)
+        cv2.imshow("original", img)
         k = cv2.waitKey(1) & 0xFF
         if k == 27: #escape key
             break
 
-        l = cv2.getTrackbarPos('L', 'image')
-        u = cv2.getTrackbarPos('U', 'image')
-        m = cv2.getTrackbarPos('M', 'image')
+        lu = cv2.getTrackbarPos('Lu', 'image')
+        ll = cv2.getTrackbarPos('Ll', 'image')
 
-        breakpoint()
+        uu = cv2.getTrackbarPos('Uu', 'image')
+        ul = cv2.getTrackbarPos('Ul', 'image')
+
+        mu = cv2.getTrackbarPos('Mu', 'image')
+        ml = cv2.getTrackbarPos('Ml', 'image')
+
         hsv_image = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-        hsv_threshold = cv2.inRange(hsv_image, (10, 0, 8), (39, 170, 255))
-        dilate = hsv_threshold
-        """
-        kernel = np.ones((l, l), np.uint8)
-        dilate = cv2.dilate(hsv_threshold, kernel, iterations=m)
-        dilate = cv2.cvtColor(dilate, cv2.COLOR_GRAY2RGB)
-        """
+        hsv_threshold = cv2.inRange(hsv_image, (ll, ul, ml), (lu, uu, mu))
+        kernel = np.ones((7, 7), np.uint8)
+        dilate = cv2.dilate(hsv_threshold, kernel, iterations=5)
 
     cv2.destroyAllWindows()
 
@@ -55,10 +59,9 @@ def create_graph_cut(image):
 
     hsv_image = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     img = cv2.GaussianBlur(img, (5, 5), 0)
-    check_threshold(img)
 
     # Mask obtained through threshold
-    hsv_threshold = cv2.inRange(hsv_image, (10, 0, 8), (39, 170, 255))
+    hsv_threshold = cv2.inRange(hsv_image, (0, 0, 65), (32, 255, 255))
     kernel = np.ones((7, 7), np.uint8)
     dilate = cv2.dilate(hsv_threshold, kernel, iterations=5)
 
@@ -69,14 +72,14 @@ def create_graph_cut(image):
 
     # mask to include lower half
     lower_mask = np.zeros_like(head_mask)
-    cv2.circle(lower_mask, (360, 1280), 360, (255), -1)
+    cv2.circle(lower_mask, (180, 1280), 360, (255), -1)
 
     # compine masks
     mask = cv2.bitwise_and(head_mask, dilate)
     mask = cv2.bitwise_or(mask, lower_mask)
 
     # Fill empty space
-    contours, hier = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    _, contours, hier = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     fill = np.zeros_like(mask)
     cv2.drawContours(fill, contours, -1, 255, -1, 4, hier)
     mask = fill 
@@ -89,10 +92,7 @@ def create_graph_cut(image):
     bgModel = np.zeros((1, 65), dtype="float")
 
     # apply GrabCut using the the mask segmentation method
-    start = time.time()
     (mask, bgModel, fgModel) = cv2.grabCut(img, mask, None, bgModel, fgModel, iterCount=1, mode=cv2.GC_INIT_WITH_MASK)
-    end = time.time()
-    print("[INFO] applying GrabCut took {:.2f} seconds".format(end - start)) 
 
     # Get foreground and background mask
     bgd_mask = np.where((mask == cv2.GC_BGD) | (mask == cv2.GC_PR_BGD), 255, 0).astype("uint8")
@@ -100,10 +100,12 @@ def create_graph_cut(image):
 
     # get bounding box of lower left half
     # and fill it
-    contours, hier = cv2.findContours(bgd_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    _, contours, hier = cv2.findContours(bgd_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     boundingBoxes = [cv2.boundingRect(c) for c in contours]
-    get_rect = [i for i, x in enumerate(boundingBoxes) if x[0] == 0 and x[3] < 550 and x[2] < 950][0]
-    cv2.drawContours(fgd_mask, contours, get_rect, 255, -1)
+    get_rect = [i for i, x in enumerate(boundingBoxes) if x[0] >= 0 and x[2] < 1000 and x[3] < 500]
+
+    if len(get_rect) > 0:
+        cv2.drawContours(fgd_mask, contours, get_rect[0], 255, -1)
 
     return fgd_mask
     
@@ -117,16 +119,12 @@ def process_folder(input_path, output_path):
     pool = mp.Pool(mp.cpu_count())
 
     # Generate all necesary paths
-    images = os.listdir(input_path)
-    images.sort()
-    images = images[int(config.frameFirst) - 1: int(config.frameLast)]
-    image_paths = [path.join(input_path, x) for x in images]
-    mask_paths = list(map(lambda x: str(path.join(output_path, x)), images))
+    image_paths = get_image_paths(input_path)
+    mask_paths = get_output_paths(image_paths, output_path)
 
     if not path.isdir(output_path):
         os.mkdir(output_path)
 
-    # Create Masks
     pool.starmap(create_and_save, zip(image_paths, mask_paths))
 
 
