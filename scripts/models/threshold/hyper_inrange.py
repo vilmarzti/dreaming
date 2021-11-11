@@ -12,7 +12,6 @@ def trial_str_creator(trial):
 def main(num_samples, max_num_epochs=20, gpus_per_trial=0.5):
     config = {
         "kernel_size": tune.randint(1, 10),
-        "padding": tune.choice([False]),
         "learning_rate": tune.loguniform(1e-4, 1e-1),
         "batch_size": tune.choice([8, 16, 32])
     }

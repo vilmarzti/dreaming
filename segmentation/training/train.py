@@ -15,12 +15,12 @@ import cv2
 import os
 
 # General params
-def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True):
+def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True, add_padding=None):
     def train(config, checkpoint_dir=None):
         # Other params
         learning_rate = config["learning_rate"]
         batch_size = config["batch_size"]
-        padding = config["padding"]
+        padding = config["padding"] if "padding" in config else add_padding
 
         # check device
         device = "cuda:0" if torch.cuda.is_available else "cpu"
@@ -61,7 +61,7 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True)
         
         # Train on equal num of expamples no matter the batchsize
         # len(train_loader) = len(train_set)/ batch_size
-        max_steps_train = len(train_loader) // (600 / batch_size)
+        max_steps_train = len(train_loader) // (300 / batch_size)
 
         for epoch in range(1000):
             running_loss = 0
