@@ -113,17 +113,19 @@ class TrainDataset(CNNDataset):
         self.total_crops = self.num_crops_x * self.num_crops_y
 
         if self.random_transforms:
-            # Prepare PCA for the random pixel pertubations
-            b_values = self.images_input[:,0].flatten()
-            g_values = self.images_input[:,1].flatten()
-            r_values = self.images_input[:,2].flatten()
+            # These are the values you get from transforming the rgb pixels into PCA space
+            # I used the script in scripts/preprocessing/compute_pca.py to get them
+            self.explained_variance_ratio = [0.97247924, 0.02025822, 0.00726254]
+            self.explained_variance = [4696.1014082, 97.82694237, 35.07080625]
+            self.principal_compoments = [
+                [ 0.49318574,  0.58025981,  0.64812529],
+                [ 0.73493345,  0.12070754, -0.66730991],
+                [-0.46544673,  0.80543668, -0.3669211 ]
+            ]
 
-            bgr_values = np.vstack([b_values, g_values, r_values]).transpose()
-            pca = PCA(n_components=3)
-            pca.fit(bgr_values)
-
-            self.pca_components = pca.components_
-            self.eigen_values = pca.explained_variance_ratio_
+            self.explained_variance = np.array(self.explained_variance)
+            self.explained_variance_ratio = np.array(self.explained_variance_ratio)
+            self.principal_compoments = np.array(self.principal_compoments)
 
     def __len__(self):
         return self.total_crops* len(self.images_input)
@@ -178,10 +180,11 @@ class TrainDataset(CNNDataset):
         return inputs, outputs
 
     # Taken from the alexNet paper
+    # Perturbs the pixel value along the vectors of the most explained variance
     def random_pertubations(self, inputs, outputs):
         samples_a = np.random.normal(size=3)
-        offset = self.eigen_values * samples_a 
-        pixel_pertubation = self.pca_components.transpose().dot(offset)
+        offset = self.explained_variance_ratio * samples_a 
+        pixel_pertubation = self.principal_compoments.transpose().dot(offset)
         pixel_pertubation = np.expand_dims(pixel_pertubation, axis=(1, 2))
         inputs[:3] = inputs[:3] + pixel_pertubation
         return inputs, outputs

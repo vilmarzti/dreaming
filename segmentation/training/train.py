@@ -61,9 +61,9 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True)
         
         # Train on equal num of expamples no matter the batchsize
         # len(train_loader) = len(train_set)/ batch_size
-        max_steps_train = len(train_loader) // ( 30 * batch_size)
+        max_steps_train = len(train_loader) // (600 / batch_size)
 
-        for epoch in range(20):
+        for epoch in range(1000):
             running_loss = 0
             net.train()
             for i, data in enumerate(train_loader):
