@@ -47,13 +47,13 @@ class CNNSegmentation(nn.Module):
         self.output_layer = self.conv(intermidiate_channels, 1, kernel_size)
         
     def forward(self, x):
-        # Decide whether to use the linear psoitional encoding
+        # decide whether to use the linear psoitional encoding
         # or the sinusoid positional encoding
-        indices = np.arange(self.in_channels)
+        indices = np.arange(self.input_channels)
         if self.positional_encoding == "linear":
-            indices = np.append(indices, np.arange(self.in_channels, self.in_channels + 2))
+            indices = np.append(indices, np.arange(self.input_channels, self.input_channels + 2))
         elif self.positional_encoding == "sin":
-            indices = np.append(indices, np.arange(self.in_channels + 2, self.in_channels + 6))
+            indices = np.append(indices, np.arange(self.input_channels + 2, self.input_channels + 6))
         x = x[:, indices]
 
         #input

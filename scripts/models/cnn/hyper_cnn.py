@@ -1,5 +1,7 @@
 from ray import tune
-from ray.tune.schedulers import ASHAScheduler
+from ray.tune import schedulers
+from ray.tune.schedulers import  HyperBandScheduler 
+from ray.tune.suggest.hyperopt import HyperOptSearch
 
 from segmentation.training import create_test_best, create_train
 from segmentation.helper import create_cnn
@@ -7,7 +9,7 @@ from segmentation.helper import create_cnn
 def trial_str_creator(trial):
     return f"trial_{trial.trial_id}"
 
-def main(num_samples, max_num_epochs=45, gpus_per_trial=0.5):
+def main(num_samples, max_num_epochs=30, gpus_per_trial=0.5):
     config = {
         "kernel_size": tune.randint(3, 10),
         "intermidiate_channels": tune.randint(1, 5),
@@ -19,10 +21,12 @@ def main(num_samples, max_num_epochs=45, gpus_per_trial=0.5):
         "batch_size": tune.choice([8, 16, 32])
     }
 
-    scheduler = ASHAScheduler(
+    search_alg = HyperOptSearch(metric="val_accuracy", mode="max")
+
+    scheduler = HyperBandScheduler(
         max_t=max_num_epochs,
-        grace_period=1,
-        reduction_factor=2
+        metric="val_accuracy",
+        mode="max"
     )
 
     train = create_train(
@@ -43,13 +47,12 @@ def main(num_samples, max_num_epochs=45, gpus_per_trial=0.5):
         tune.with_parameters(train),
         resources_per_trial={"cpu": 4, "gpu": gpus_per_trial},
         config=config,
-        metric="val_accuracy",
-        mode="max",
         num_samples=num_samples,
         trial_dirname_creator=trial_str_creator,
         scheduler=scheduler,
         local_dir="./data/raytune",
-        name="cnn"
+        name="cnn",
+        search_alg=search_alg
     )
 
     best_trial = result.get_best_trial("val_loss", "max", "last")

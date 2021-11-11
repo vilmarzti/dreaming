@@ -1,6 +1,5 @@
 from torch.nn.functional import interpolate
 from torch.nn.modules.loss import BCELoss
-from torch.utils.data.dataset import random_split
 
 from segmentation.data.dataset import TestDataset, TrainDataset 
 
@@ -11,7 +10,6 @@ from ray import tune
 import torch
 import torch.optim as optim
 
-import cv2
 import os
 
 # General params
@@ -27,7 +25,6 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True,
 
         # Model
         net = create_model(config)
-
         net = net.to(device)
 
         criterion = BCELoss()
@@ -61,7 +58,7 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True,
         
         # Train on equal num of expamples no matter the batchsize
         # len(train_loader) = len(train_set)/ batch_size
-        max_steps_train = len(train_loader) // (300 / batch_size)
+        max_steps_train = len(train_loader) // (150 / batch_size)
 
         for epoch in range(1000):
             running_loss = 0
@@ -126,10 +123,10 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True,
     
     return train
 
-def create_test_best(create_model, split_size, cvt_flag, add_encoding):
+def create_test_best(create_model, split_size, cvt_flag, add_encoding, add_padding=None):
     def test_best_model(best_trial):
         config = best_trial.config
-        padding = config["padding"]
+        padding = config["padding"] if "padding" in config else add_padding
 
         device = "cuda:0" if torch.cuda.is_available else "cpu"
 
