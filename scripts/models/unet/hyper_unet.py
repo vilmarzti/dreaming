@@ -13,7 +13,7 @@ def trial_str_creator(trial):
 def main(num_samples, max_num_epochs=20, gpus_per_trial=0.5):
     config = {
         "deepness": tune.randint(2, 5),
-        "starting_multiplier": tune.randint(3, 11),
+        "starting_multiplier": tune.randint(3, 8),
         "use_thin": tune.choice([True, False]),
         "positional_encoding": tune.choice(["sin", "linear", None]),
         "learning_rate": tune.loguniform(1e-4, 1e-1),
@@ -33,7 +33,8 @@ def main(num_samples, max_num_epochs=20, gpus_per_trial=0.5):
     )
 
     stopper = TrialPlateauStopper(
-        metric="val_accuracy"
+        metric="val_accuracy",
+        std=0.001
     )
 
     train = create_train(
@@ -41,12 +42,12 @@ def main(num_samples, max_num_epochs=20, gpus_per_trial=0.5):
         300,
         None,
         True,
-        False
+        True 
     )
 
     test_best_model = create_test_best(
         create_unet,
-        5,
+        3,
         None,
         True
     )
