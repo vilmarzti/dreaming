@@ -1,5 +1,8 @@
 from ray import tune
-from ray.tune.schedulers import ASHAScheduler
+from ray.tune.schedulers import HyperBandScheduler
+from ray.tune.suggest.hyperopt import HyperOptSearch
+
+from ray.tune.stopper import TrialPlateauStopper
 
 from segmentation.training import create_test_best, create_train
 from segmentation.helper import create_unet
@@ -7,7 +10,7 @@ from segmentation.helper import create_unet
 def trial_str_creator(trial):
     return f"trial_{trial.trial_id}"
 
-def main(num_samples, max_num_epochs=45, gpus_per_trial=0.5):
+def main(num_samples, max_num_epochs=20, gpus_per_trial=0.5):
     config = {
         "deepness": tune.randint(2, 5),
         "starting_multiplier": tune.randint(3, 11),
@@ -17,10 +20,20 @@ def main(num_samples, max_num_epochs=45, gpus_per_trial=0.5):
         "batch_size": tune.choice([8, 16, 32])
     }
 
-    scheduler = ASHAScheduler(
+    search_alg = HyperOptSearch(
+        metric="val_accuracy",
+        mode="max",
+        n_initial_points=5
+    )
+
+    scheduler = HyperBandScheduler(
         max_t=max_num_epochs,
-        grace_period=1,
-        reduction_factor=2
+        metric="val_accuracy",
+        mode="max",
+    )
+
+    stopper = TrialPlateauStopper(
+        metric="val_accuracy"
     )
 
     train = create_train(
@@ -40,18 +53,18 @@ def main(num_samples, max_num_epochs=45, gpus_per_trial=0.5):
 
     result = tune.run(
         tune.with_parameters(train),
-        resources_per_trial={"cpu": 4, "gpu": gpus_per_trial},
+        resources_per_trial={"cpu": 8, "gpu": 1},
         config=config,
-        metric="val_accuracy",
-        mode="max",
         num_samples=num_samples,
         trial_dirname_creator=trial_str_creator,
         scheduler=scheduler,
         local_dir="./data/raytune",
-        name="unet"
+        name="unet",
+        search_alg=search_alg,
+        stop=stopper
     )
 
-    best_trial = result.get_best_trial("val_loss", "max", "last")
+    best_trial = result.get_best_trial("val_accuracy", "max", "last")
 
     print("Best trial config: {}".format(best_trial.config))
     print("Best trial final validation loss: {}".format(

@@ -124,4 +124,5 @@ class UNet(nn.Module):
             up_in.append(output)
         
         out = self.conv_out(up_in[-1])
+        out = torch.sigmoid(out)
         return out
