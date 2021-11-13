@@ -5,8 +5,6 @@ import numpy as np
 
 from torch.utils.data import Dataset
 
-from sklearn.decomposition import PCA
-
 from segmentation.helper import positionalencoding2d_linear, positionalencoding2d_sin
 
 def normalize(image_channel):
@@ -190,28 +188,41 @@ class TrainDataset(CNNDataset):
         return inputs, outputs
 
 class TestDataset(CNNDataset):
-    def __init__(self, input_path, output_path, split_factor, cvt_flag=None, add_encoding=True):
+    """
+        Compared to Train dataset where images returned can overlap.
+        This class gives return only non-overlapping images/labels
+    """
+    def __init__(self, input_path, output_path, crop_size, cvt_flag=None, add_encoding=True):
         super().__init__(input_path, output_path, cvt_flag=cvt_flag, add_encoding=add_encoding)
 
-        self.split_factor = split_factor
-        self.splits_per_image = split_factor ** 2
+        # Define the number of crops
+        if type(crop_size) is int:
+            self.x_crop = crop_size
+            self.y_crop = crop_size
+        else:
+            self.x_crop = crop_size[0]
+            self.y_crop = crop_size[1]
 
-        self.split_x_size = 720 // split_factor
-        self.split_y_size = 1280 // split_factor
+        self.num_crops_x = 720 // self.x_crop
+        self.num_crops_y = 1280 // self.y_crop
+
+        self.crops_per_image = self.num_crops_x * self.num_crops_y
     
     def __len__(self):
-        return self.splits_per_image * len(self.images_input)
+        return self.crops_per_image * len(self.images_input)
     
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        img_num = idx // self.splits_per_image
-        index_x = (idx % self.split_factor) * self.split_x_size
-        index_y = ((idx // self.split_factor) % self.split_factor) * self.split_y_size
+        img_num = idx // self.crops_per_image
+        index_x = (idx % self.num_crops_x) * self.x_crop
+        index_y = ((idx % self.crops_per_image) // self.num_crops_x) * self.y_crop
 
-        inputs = self.images_input[img_num, :, index_y: index_y + self.split_y_size, index_x : index_x + self.split_x_size]
-        outputs = self.images_output[img_num, index_y: index_y + self.split_y_size, index_x : index_x + self.split_x_size]
+        print(img_num, index_x, index_y)
+
+        inputs = self.images_input[img_num, :, index_y: index_y + self.y_crop, index_x : index_x + self.y_crop]
+        outputs = self.images_output[img_num, index_y: index_y + self.y_crop, index_x : index_x + self.y_crop]
 
         inputs = np.single(inputs)
         outputs = np.single(outputs)
