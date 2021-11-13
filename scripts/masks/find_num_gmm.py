@@ -46,8 +46,6 @@ for num_components in range(2, max_num_components):
     print(f"Mean score {np.mean(component_shil_score)} for {num_components} components")
     silh_scores.append(component_shil_score)
 
-breakpoint()
-
 score_means = np.mean(silh_scores, axis=1)
 scores_std = np.std(silh_scores, axis=1)
 
