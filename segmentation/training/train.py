@@ -1,3 +1,4 @@
+from torch._C import Value
 from torch.nn.functional import interpolate
 from torch.nn.modules.loss import BCELoss
 
@@ -12,13 +13,34 @@ import torch.optim as optim
 
 import os
 
+def crop_or_scale(outputs, targets, transform):
+    if outputs.shape[1] != targets.shape[1] or outputs.shape[2] != outputs.shape[2]:
+        if transform == "scale":
+            outputs = interpolate(outputs, (targets.shape[1], targets.shape[1]), mode="bilinear", align_corners=False)
+        elif transform == "crop":
+            diff_y = (targets.shape[1] - outputs.shape[1]) // 2
+            diff_x = (targets.shape[2] - outputs.shape[2]) // 2
+            targets = targets[:, diff_y: diff_y + outputs.shape[1], diff_x: diff_x + outputs.shape[2]]
+        else:
+            raise ValueError(f"Outputs of the Model has not the same shape as target.\nOutput shape{outputs.shape} Target shape: {targets.shape}")
+    return targets, outputs
+
+
+
 # General params
-def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True, add_padding=None):
+def create_train(
+    create_model,
+    crop_size,
+    cvt_flag,
+    add_encoding,
+    use_tune=True,
+    transform=None # Either "crop" or "scale". Is used with to decide whether to crop/scale the outputs to the right size
+):
     def train(config, checkpoint_dir=None):
         # Other params
         learning_rate = config["learning_rate"]
         batch_size = config["batch_size"]
-        padding = config["padding"] if "padding" in config else add_padding
+        padding = config["padding"] if "padding" in config else transform == "pad" # Check whether input gets already padded to the right size
 
         # check device
         device = "cuda:0" if torch.cuda.is_available else "cpu"
@@ -42,7 +64,7 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True,
         valid_set = TestDataset(
             "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_input",
             "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_output",
-            5,
+            crop_size,
             cvt_flag,
             add_encoding
         )
@@ -73,9 +95,10 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True,
 
                 outputs = net(inputs)
 
-                # interpolate if we don't have same size
-                outputs = interpolate(outputs, (crop_size, crop_size), mode="bilinear", align_corners=False) if not padding else outputs
                 outputs = torch.squeeze(outputs)
+
+                # either interpolate outputs or crop target if it does not have same size
+                labels, outputs = crop_or_scale(outputs, labels, transform)
 
                 loss = criterion(outputs, labels)
                 loss.backward()
@@ -93,17 +116,18 @@ def create_train(create_model, crop_size, cvt_flag, add_encoding, use_tune=True,
                     inputs = inputs.to(device)
                     labels = labels.to(device)
 
-                    output = net(inputs)
-
-                    output = interpolate(output, (inputs.shape[2], inputs.shape[3]), mode="bilinear", align_corners=False) if not padding else output
-                    output = torch.squeeze(output, 1)
+                    outputs = net(inputs)
+                    outputs = torch.squeeze(outputs, 1)
+                    
+                    # Either crop or scale the 
+                    labels, outputs = crop_or_scale(outputs, labels, transform)
 
                     # compute validation loss
-                    val_loss = criterion(output, labels)
+                    val_loss = criterion(outputs, labels)
                     val_losses += val_loss.item()
 
                     # compute validation accuracy
-                    accuracy = torch.mean((labels == (output > 0.5).type(torch.uint8)).type(torch.float))
+                    accuracy = torch.mean((labels == (outputs > 0.5).type(torch.uint8)).type(torch.float))
                     val_accuracy += accuracy.item()
 
             mean_train_loss = running_loss / max_steps_train
