@@ -8,13 +8,11 @@ import sys
 sys.path.append("../Few-Shot-Patch-Based-Training/_tools/")
 import config
 
-import pybgs as bgs
 
 def background_substract(image_paths):
-    #bg_substractor = cv2.createBackgroundSubstractorMOG2(detectShadows=True)
-    bg_substractor = bgs.MultiLayer()
-    img = cv2.imread(image_paths[0])
+    bg_substractor = cv2.createBackgroundSubstractorMOG2(detectShadows=True)
 
+    img = cv2.imread(image_paths[0])
     masks = []
     for path in image_paths[1:]:
         fg_mask = bg_substractor.apply(img)
@@ -30,6 +28,7 @@ def background_substract(image_paths):
 
         img = cv2.imread(path)
     
+    breakpoint()
     return masks
 
 
