@@ -29,11 +29,11 @@ def crop_or_scale(outputs, targets, transform):
 
 # General params
 def create_train(
-    create_model,
-    crop_size,
-    cvt_flag,
-    add_encoding,
-    use_tune=True,
+    create_model,  # The function that creates a model (unet, cnn, etc) from a given config
+    crop_size,     # Dataset parameter that says how big the images should get cropped
+    cvt_flag,      # Conversion flag for the Dataset. Can be used to create a hsv or gray-scale image
+    add_encoding,  # If the dataset should add sin/linear positional encoding
+    use_tune=True, # Disable when running without tune hyper-paramtersearch
     transform=None # Either "crop" or "scale". Is used with to decide whether to crop/scale the outputs to the right size
 ):
     def train(config, checkpoint_dir=None):
