@@ -23,7 +23,7 @@ def crop_or_scale(outputs, targets, transform):
             targets = targets[:, diff_y: diff_y + outputs.shape[1], diff_x: diff_x + outputs.shape[2]]
         else:
             raise ValueError(f"Outputs of the Model has not the same shape as target.\nOutput shape{outputs.shape} Target shape: {targets.shape}")
-    return targets, outputs
+    return outputs,targets 
 
 
 
@@ -40,7 +40,6 @@ def create_train(
         # Other params
         learning_rate = config["learning_rate"]
         batch_size = config["batch_size"]
-        padding = config["padding"] if "padding" in config else transform == "pad" # Check whether input gets already padded to the right size
 
         # check device
         device = "cuda:0" if torch.cuda.is_available else "cpu"
@@ -85,6 +84,8 @@ def create_train(
         for epoch in range(1000):
             running_loss = 0
             net.train()
+
+            # Training loop
             for i, data in enumerate(train_loader):
                 inputs, labels= data
 
@@ -98,7 +99,7 @@ def create_train(
                 outputs = torch.squeeze(outputs)
 
                 # either interpolate outputs or crop target if it does not have same size
-                labels, outputs = crop_or_scale(outputs, labels, transform)
+                outputs, labels = crop_or_scale(outputs, labels, transform)
 
                 loss = criterion(outputs, labels)
                 loss.backward()
@@ -111,6 +112,7 @@ def create_train(
             val_losses = 0
             val_accuracy = 0
             net.eval()
+            # Validation loop
             for i, (inputs, labels) in enumerate(valid_loader):
                 with torch.no_grad():
                     inputs = inputs.to(device)
@@ -119,8 +121,8 @@ def create_train(
                     outputs = net(inputs)
                     outputs = torch.squeeze(outputs, 1)
                     
-                    # Either crop or scale the 
-                    labels, outputs = crop_or_scale(outputs, labels, transform)
+                    # Either crop or scale the labels, oututs
+                    outputs, labels = crop_or_scale(outputs, labels, transform)
 
                     # compute validation loss
                     val_loss = criterion(outputs, labels)
@@ -147,10 +149,9 @@ def create_train(
     
     return train
 
-def create_test_best(create_model, split_size, cvt_flag, add_encoding, add_padding=None):
+def create_test_best(create_model, crop_size, cvt_flag, add_encoding, transform=None):
     def test_best_model(best_trial):
         config = best_trial.config
-        padding = config["padding"] if "padding" in config else add_padding
 
         device = "cuda:0" if torch.cuda.is_available else "cpu"
 
@@ -167,11 +168,12 @@ def create_test_best(create_model, split_size, cvt_flag, add_encoding, add_paddi
         valid_set = TestDataset(
             "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/test_input",
             "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/test_output",
-            split_size,
+            crop_size,
             cvt_flag,
             add_encoding
         )
-        valid_loader = DataLoader(valid_set, batch_size=32, shuffle=True, num_workers=2)
+
+        valid_loader = DataLoader(valid_set, batch_size=1)
 
         # Compute accuracy
         mean_accuracy = 0
@@ -181,7 +183,9 @@ def create_test_best(create_model, split_size, cvt_flag, add_encoding, add_paddi
                 labels = labels.to(device)
 
                 outputs = net(inputs)
-                outputs = interpolate(outputs, (split_size, split_size), mode="bilinear", align_corners=False) if not padding else outputs
+                outputs.squeeze(1)
+
+                outputs, labels = crop_or_scale(outputs, labels, transform)
     
                 accuracy = torch.mean((labels == (outputs > 0.5).type(torch.uint8)).type(torch.float))
                 mean_accuracy += accuracy.item()

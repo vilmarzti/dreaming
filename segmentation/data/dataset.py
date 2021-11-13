@@ -190,7 +190,7 @@ class TrainDataset(CNNDataset):
 class TestDataset(CNNDataset):
     """
         Compared to Train dataset where images returned can overlap.
-        This class gives return only non-overlapping images/labels
+        This class returns only non-overlapping images/labels
     """
     def __init__(self, input_path, output_path, crop_size, cvt_flag=None, add_encoding=True):
         super().__init__(input_path, output_path, cvt_flag=cvt_flag, add_encoding=add_encoding)
@@ -218,8 +218,6 @@ class TestDataset(CNNDataset):
         img_num = idx // self.crops_per_image
         index_x = (idx % self.num_crops_x) * self.x_crop
         index_y = ((idx % self.crops_per_image) // self.num_crops_x) * self.y_crop
-
-        print(img_num, index_x, index_y)
 
         inputs = self.images_input[img_num, :, index_y: index_y + self.y_crop, index_x : index_x + self.y_crop]
         outputs = self.images_output[img_num, index_y: index_y + self.y_crop, index_x : index_x + self.y_crop]
