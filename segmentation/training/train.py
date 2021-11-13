@@ -154,7 +154,7 @@ def create_train(
 
                     # compute jaccard index
                     output_labels = (outputs > 0.5).type(torch.uint8)
-                    val_j_index += jaccard_index(output_labels, labels, device=device)
+                    val_j_index += jaccard_index(output_labels, labels, device=device).detach().cpu().item()
 
                     # compute validation accuracy
                     accuracy = torch.mean((labels == output_labels).type(torch.float))

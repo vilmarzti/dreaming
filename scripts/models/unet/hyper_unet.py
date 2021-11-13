@@ -1,7 +1,7 @@
 from ray import tune
+
 from ray.tune.schedulers import HyperBandScheduler
 from ray.tune.suggest.hyperopt import HyperOptSearch
-
 from ray.tune.stopper import TrialPlateauStopper
 
 from segmentation.training import create_test_best, create_train
@@ -21,19 +21,19 @@ def main(num_samples, max_num_epochs=20, gpus_per_trial=0.5):
     }
 
     search_alg = HyperOptSearch(
-        metric="val_accuracy",
+        metric="val_j_index",
         mode="max",
         n_initial_points=5
     )
 
     scheduler = HyperBandScheduler(
         max_t=max_num_epochs,
-        metric="val_accuracy",
+        metric="val_j_index",
         mode="max",
     )
 
     stopper = TrialPlateauStopper(
-        metric="val_accuracy",
+        metric="val_j_index",
         std=0.006
     )
 
