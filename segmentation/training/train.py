@@ -14,6 +14,10 @@ import torch.optim as optim
 import os
 
 def crop_or_scale(outputs, targets, transform):
+    """
+        Helper function that checks whether the output of a model has the same dimension as the target
+        If they don't the output gets either scaled, or cropped
+    """
     if outputs.shape[1] != targets.shape[1] or outputs.shape[2] != outputs.shape[2]:
         if transform == "scale":
             outputs = interpolate(outputs, (targets.shape[1], targets.shape[1]), mode="bilinear", align_corners=False)
@@ -22,7 +26,7 @@ def crop_or_scale(outputs, targets, transform):
             diff_x = (targets.shape[2] - outputs.shape[2]) // 2
             targets = targets[:, diff_y: diff_y + outputs.shape[1], diff_x: diff_x + outputs.shape[2]]
         else:
-            raise ValueError(f"Outputs of the Model has not the same shape as target.\nOutput shape{outputs.shape} Target shape: {targets.shape}")
+            raise ValueError(f"Outputs of the Model has not the same shape as target.\nOutput shape{outputs.shape} Target shape: {targets.shape}\nPlease provide the right transform argument in the training function")
     return outputs,targets 
 
 
@@ -164,7 +168,7 @@ def create_test_best(create_model, crop_size, cvt_flag, add_encoding, transform=
         model_state, _ = torch.load(ck_path)
         net.load_state_dict(model_state)
 
-        # Get DAtaloader
+        # Get Dataloader
         valid_set = TestDataset(
             "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/test_input",
             "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/test_output",
