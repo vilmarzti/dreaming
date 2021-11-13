@@ -42,7 +42,7 @@ def main(num_samples, max_num_epochs=20, gpus_per_trial=0.5):
         252,             # This creates an output with minimal loss of height and size for Unet of depth 2/3
         None,
         True,
-        transfrom="crop"
+        transform="crop"
     )
 
     test_best_model = create_test_best(
@@ -50,7 +50,7 @@ def main(num_samples, max_num_epochs=20, gpus_per_trial=0.5):
         252,
         None,
         True,
-        transfrom="crop"
+        transform="crop"
     )
 
     result = tune.run(
