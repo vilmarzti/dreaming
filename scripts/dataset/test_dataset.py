@@ -1,4 +1,4 @@
-from segmentation.data import TrainDataset
+from segmentation.data import TrainDataset, TestDataset
 from torch.utils.data import DataLoader
 
 import cv2
@@ -17,9 +17,20 @@ train_set = TrainDataset(
     True
 )
 
-train_loader = DataLoader(train_set, batch_size=1)
+valid_set = TestDataset(
+    "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_input",
+    "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_output",
+    252,
+    cvt_flag,
+    add_encoding
+)
 
-for img, seg in  train_loader:
+train_loader = DataLoader(train_set, batch_size=1)
+valid_loader = DataLoader(valid_set, batch_size=1)
+
+len(valid_set)
+
+for img, seg in  valid_loader:
     """
     img = img - img.min()
     img = img / img.max()

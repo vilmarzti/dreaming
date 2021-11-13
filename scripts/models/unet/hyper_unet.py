@@ -12,7 +12,7 @@ def trial_str_creator(trial):
 
 def main(num_samples, max_num_epochs=20, gpus_per_trial=0.5):
     config = {
-        "deepness": tune.randint(2, 5),
+        "deepness": tune.randint(2, 4),
         "starting_multiplier": tune.randint(3, 8),
         "use_thin": tune.choice([True, False]),
         "positional_encoding": tune.choice(["sin", "linear", None]),
@@ -34,12 +34,12 @@ def main(num_samples, max_num_epochs=20, gpus_per_trial=0.5):
 
     stopper = TrialPlateauStopper(
         metric="val_accuracy",
-        std=0.001
+        std=0.006
     )
 
     train = create_train(
         create_unet,
-        300,
+        252,             # This creates an output with minimal loss of height and size for Unet of depth 2/3
         None,
         True,
         True 
