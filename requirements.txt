@@ -4,6 +4,7 @@ antlr4-python3-runtime==4.9.3
 appdirs==1.4.4
 astor==0.8.1
 attrs==21.2.0
+bayesian-optimization==1.2.0
 cached-property==1.5.2
 certifi==2021.10.8
 charset-normalizer==2.0.7
@@ -20,6 +21,7 @@ google-pasta==0.2.0
 greenlet==1.1.2
 grpcio==1.41.1
 h5py==3.5.0
+hyperopt==0.2.5
 idna==3.3
 imageio==2.10.1
 importlib-metadata==4.8.1
@@ -40,6 +42,7 @@ pandas==1.3.4
 Pillow==8.4.0
 protobuf==3.19.1
 pyarrow==6.0.0
+pybgs @ file:///home/martin/Downloads/bgslibrary
 pyparsing==3.0.3
 pyrsistent==0.18.0
 python-dateutil==2.8.2
@@ -53,6 +56,8 @@ requests==2.26.0
 scikit-image==0.17.2
 scikit-learn==1.0.1
 scipy==1.5.2
+-e git+git@github.com:vilmarzti/dreaming.git@36762b00ef3468b82fca2108b477a7e70b5b650f#egg=segmentation
+SimpleITK==2.1.1
 six==1.16.0
 SQLAlchemy==1.4.26
 tabulate==0.8.9
@@ -63,9 +68,11 @@ tensorflow-estimator==1.15.1
 termcolor==1.1.0
 threadpoolctl==3.0.0
 tifffile==2021.10.12
-torch==1.6.0
+torch==1.8.0+cu111
+torchaudio==0.8.0
 torchsummary==1.5.1
-torchvision==0.7.0
+torchvision==0.9.0+cu111
+tqdm==4.62.3
 triad==0.5.5
 tune==0.0.9
 typing-extensions==3.10.0.2
