@@ -29,6 +29,25 @@ def crop_or_scale(outputs, targets, transform):
             raise ValueError(f"Outputs of the Model has not the same shape as target.\nOutput shape{outputs.shape} Target shape: {targets.shape}\nPlease provide the right transform argument in the training function")
     return outputs,targets 
 
+def jaccard_index(pred_labels, target_labels, device="cpu"):
+    """
+        Computes the Jaccard index
+    """
+    # Cast to same type
+    pred_labels = pred_labels.int()
+    target_labels = target_labels.int()
+
+    # Compute union and intersection
+    union = torch.bitwise_or(pred_labels, target_labels).sum()
+    intersection = torch.bitwise_and(pred_labels, target_labels).sum()
+
+    # Exception when union is 0
+    if union == 0:
+        return torch.tensor(1.0, device=device)
+    else:
+        return intersection / union
+
+
 
 
 # General params
@@ -115,6 +134,7 @@ def create_train(
 
             val_losses = 0
             val_accuracy = 0
+            val_j_index = 0
             net.eval()
             # Validation loop
             for i, (inputs, labels) in enumerate(valid_loader):
@@ -132,24 +152,30 @@ def create_train(
                     val_loss = criterion(outputs, labels)
                     val_losses += val_loss.item()
 
+                    # compute jaccard index
+                    output_labels = (outputs > 0.5).type(torch.uint8)
+                    val_j_index += jaccard_index(output_labels, labels, device=device)
+
                     # compute validation accuracy
-                    accuracy = torch.mean((labels == (outputs > 0.5).type(torch.uint8)).type(torch.float))
+                    accuracy = torch.mean((labels == output_labels).type(torch.float))
                     val_accuracy += accuracy.item()
 
             mean_train_loss = running_loss / max_steps_train
             mean_val_loss = val_losses / len(valid_loader)
             mean_val_acc = val_accuracy / len(valid_loader)
+            mean_val_j = val_j_index / len(valid_loader)
 
             if tune and use_tune:
                 with tune.checkpoint_dir(step=epoch) as checkpoint_dir:
                     ck_path = os.path.join(checkpoint_dir, "checkpoint")
                     torch.save((net.state_dict(), optimizer.state_dict()), ck_path)
 
-                tune.report(val_loss=mean_val_loss, val_accuracy=mean_val_acc, train_loss=mean_train_loss)
+                tune.report(val_loss=mean_val_loss, val_accuracy=mean_val_acc, val_j_index=mean_val_j, train_loss=mean_train_loss)
             else:
                 print(f"Mean validation_loss:     {mean_val_loss}")    
-                print(f"Mean Training loss:       {mean_train_loss}")
                 print(f"Mean validation accuracy: {mean_val_acc}")
+                print(f"Mean validation j_index:  {mean_val_j}")
+                print(f"Mean Training loss:       {mean_train_loss}")
     
     return train
 
@@ -181,6 +207,7 @@ def create_test_best(create_model, crop_size, cvt_flag, add_encoding, transform=
 
         # Compute accuracy
         mean_accuracy = 0
+        mean_j_index = 0
         with torch.no_grad():
             for i, (inputs, labels) in enumerate(valid_loader):
                 inputs = inputs.to(device)
@@ -190,11 +217,18 @@ def create_test_best(create_model, crop_size, cvt_flag, add_encoding, transform=
                 outputs.squeeze(1)
 
                 outputs, labels = crop_or_scale(outputs, labels, transform)
+
+                output_labels = (outputs > 0.5).type(torch.uint8)
     
-                accuracy = torch.mean((labels == (outputs > 0.5).type(torch.uint8)).type(torch.float))
+                j_index = jaccard_index(output_labels, labels, device=device)
+                accuracy = torch.mean((labels == output_labels).type(torch.float))
+
+                mean_j_index += j_index
                 mean_accuracy += accuracy.item()
 
         mean_accuracy = mean_accuracy / len(valid_loader)
-        best_trial(f"Best trial on validation set: {mean_accuracy}")
+        mean_j_index = mean_j_index / len(valid_loader)
+
+        print(f"Best trial on validation set - Accuracy {mean_accuracy} J-Index {mean_j_index}")
 
     return test_best_model
