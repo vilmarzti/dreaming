@@ -140,7 +140,7 @@ def background_substract(image_paths, first_background):
         fg_mask = bg_subtractor.apply(img_per)
         fg_mask_post = postprocessing(fg_mask)
         masks.append(fg_mask_post)
-        print(f"Processed image {i + 2} from {len(image_paths}")
+        print(f"Processed image {i + 2} from {len(image_paths)}")
 
     return masks
 
