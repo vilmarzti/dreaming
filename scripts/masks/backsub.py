@@ -2,7 +2,6 @@ import argparse
 import os
 import cv2
 
-
 import numpy as np
 import multiprocessing as mp
 
@@ -12,11 +11,12 @@ from os import path
 # Steps referenced from "Evaluation of Background Subtraction Algorithms with Post-Processing"
 def postprocessing(foreground_mask):
     foreground_mask = noise_removal_parallel(foreground_mask)
-    foreground_mask = noise_removal(foreground_mask)
     foreground_mask = morphological_closing(foreground_mask)
     foreground_mask = area_thresholding(foreground_mask)
     return foreground_mask
 
+# Does noise removal in parallel (splitting the image into smaller sub images)
+# see the corresponding <noise_removal> procedure below
 def noise_removal_parallel(foreground_mask, threshold=3):
     # num_split must divide x and y  without overlap
     num_splits = 8
@@ -41,6 +41,8 @@ def noise_removal_parallel(foreground_mask, threshold=3):
     return new_mask
 
 
+# Removes noise from a mask by computing the number of active pixel in the 8-connected neighbourhood
+# of each pixel. If there are more than <threshold> active pixels in the neighbourhood it keeps that pixel
 def noise_removal(foreground_mask, threshold=3):
     new_mask = np.zeros_like(foreground_mask)
     for y in range(foreground_mask.shape[0]):
@@ -108,6 +110,7 @@ def perturb_image(img, mask):
     background_mask = cv2.bitwise_not(mask)
     background = cv2.bitwise_or(img, img, mask=background_mask)
 
+    # Combine random foreground with background
     combined = cv2.bitwise_or(foreground_perturbed, background)
     return combined
 
@@ -137,8 +140,13 @@ def background_substract(image_paths, first_background):
         img = cv2.imread(path)
         img_per = perturb_image(img, fg_mask_post)
         
+        # apply backsub algorithm
         fg_mask = bg_subtractor.apply(img_per)
+
+        # Do some post-processing of the foreground mask
+        # See the comment in the function <postporcessing> for the referenced papaer
         fg_mask_post = postprocessing(fg_mask)
+
         masks.append(fg_mask_post)
         print(f"Processed image {i + 2} from {len(image_paths)}")
 
@@ -146,24 +154,33 @@ def background_substract(image_paths, first_background):
 
 
 def process_folder(input_path, first_background_image, output_path):
+    # Get all the images from input_path
     images = os.listdir(input_path)
     images.sort()
 
-    images = images[:10]
-
+    # Set-up paths for reading and writing
     image_paths = [path.join(input_path, x) for x in images]
     mask_paths = list(map(lambda x: str(path.join(output_path, x)), images))
 
+    # Use backsub algorithm
     masks = background_substract(image_paths, first_background_image)
 
+    # Create output folder if does not exists
     if not os.path.isdir(output_path):
         os.mkdir(output_path)
     
+    # Write computed masks
     for p, m in zip(mask_paths, masks):
         cv2.imwrite(p, m)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=""" Creates masks for body""")
+    parser = argparse.ArgumentParser(description="""
+        Creates masks using Background-Subtraction with GMM
+        This algorithm reads a set of input images specified by the input parameter
+        and an inital fore-ground mask that corresponds to the first image. 
+        It then propagates the calculated/given foreground mask through the timeseries.
+        Finally writes computed masks to the specified output folder.
+    """)
 
     parser.add_argument("--input-path", "-i",
         help="The path to the folder with the images",
