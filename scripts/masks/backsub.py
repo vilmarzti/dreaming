@@ -9,7 +9,7 @@ import multiprocessing as mp
 from itertools import repeat
 from os import path
 
-# Steps referenced from Evaluation of Background Subtraction Algorithms with Post-Processing
+# Steps referenced from "Evaluation of Background Subtraction Algorithms with Post-Processing"
 def postprocessing(foreground_mask):
     foreground_mask = noise_removal_parallel(foreground_mask)
     foreground_mask = noise_removal(foreground_mask)
@@ -112,54 +112,53 @@ def perturb_image(img, mask):
     return combined
 
 
-def background_substract(image_paths):
+def background_substract(image_paths, first_background):
+    # Set up MOG2 background subtractor
     bg_subtractor = cv2.createBackgroundSubtractorMOG2(detectShadows=False)
-    bg_subtractor.setHistory(1500)
+    bg_subtractor.setHistory(len(image_paths))
 
+    # Read first image
     img = cv2.imread(image_paths[0])
-
     bg_subtractor.apply(img)
-    fg_mask = cv2.imread("/home/martin/Pictures/bf/segmentation/train_output/0001.png", cv2.IMREAD_GRAYSCALE)
-    fg_mask = np.where(fg_mask < 127, 0, 255).astype(np.uint8)
-
     masks = []
-    for path in image_paths[1:]:
-        fg_mask_post = postprocessing(fg_mask)
-        masks.append(fg_mask_post)
 
-        idx_fore = fg_mask_post != 0
-        idx_back = fg_mask_post == 0
+    # Add a first background image to bootstrap the feedback loop
+    fg_mask_post = cv2.imread(first_background, cv2.IMREAD_GRAYSCALE)
+    fg_mask_post = np.where(fg_mask < 127, 0, 255).astype(np.uint8)
+    masks.append(fg_mask)
 
-        img_with_mask = np.zeros_like(img)
-        img_with_mask[idx_fore] = np.minimum(img[idx_fore] + [0, 0, 255], [255, 255, 255]).astype(np.uint8)
-        img_with_mask[idx_back] = img[idx_back]
-       
-        img = cv2.imread(path)
-
-        cv2.imshow("FG Mask", img_with_mask)
-        cv2.imshow("FG Mask processed", fg_mask_post)
-        k = cv2.waitKey(26)
-        if k == 27:
-            break
-
+    # Go through the remaining images
+    for i, path in enumerate(image_paths[1:]):
+        # MOG2 has no way to give feedback with the previous mask
+        # So I replace the foreground with pixels with random colors
+        # This way the GMM cant learn the rather static foreground as background
+        # I also erode the foreground with a 10x10 kernel to adjust for any movement that happens
         fg_mask_post = cv2.erode(fg_mask_post, np.ones((10, 10)))
+        img = cv2.imread(path)
         img_per = perturb_image(img, fg_mask_post)
         
         fg_mask = bg_subtractor.apply(img_per)
-
+        fg_mask_post = postprocessing(fg_mask)
+        masks.append(fg_mask_post)
+        print(f"Processed image {i + 2} from {len(image_paths}")
 
     return masks
 
 
-def process_folder(input_path, output_path):
+def process_folder(input_path, first_background_image, output_path):
     images = os.listdir(input_path)
     images.sort()
 
-    images = images[:1418]
     image_paths = [path.join(input_path, x) for x in images]
     mask_paths = list(map(lambda x: str(path.join(output_path, x)), images))
 
-    masks_forward = background_substract(image_paths)
+    masks = background_substract(image_paths, first_background_image)
+
+    if not os.path.isdir(output_path):
+        os.mkdir(output_path)
+    
+    for p, m in zip(mask_paths, masks):
+        cv2.imwrite(p, m)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=""" Creates masks for body""")
@@ -167,7 +166,11 @@ if __name__ == "__main__":
     parser.add_argument("--input-path", "-i",
         help="The path to the folder with the images",
         required=True)
-    
+ 
+    parser.add_argument("--background-image", "-b",
+        help="Path to the first background image (corresponds to the first image in <input-path>",
+        required=True)   
+
     parser.add_argument("--output-path", "-o",
         help="The folder the masks are writen to",
         required=True
