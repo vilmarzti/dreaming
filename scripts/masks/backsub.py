@@ -153,17 +153,42 @@ def background_substract(image_paths, first_background):
     return masks
 
 
-def process_folder(input_path, first_background_image, output_path):
+def process_folder(input_path, reference_mask_path, output_path):
     # Get all the images from input_path
     images = os.listdir(input_path)
     images.sort()
+
+    # get all masks that are supplied
+    reference_masks = os.listdir(reference_mask_path)
+    reference_masks.sort()
 
     # Set-up paths for reading and writing
     image_paths = [path.join(input_path, x) for x in images]
     mask_paths = list(map(lambda x: str(path.join(output_path, x)), images))
 
-    # Use backsub algorithm
-    masks = background_substract(image_paths, first_background_image)
+    # create slices with reference mask as start and end 
+    # with the position before the next reference mask as the end
+    start_indices = []
+    found_references = []
+    for reference_mask in reference_masks:
+        # Get index of refernce mask in images array
+        idx = np.asarray(np.array(images) == reference_mask).nonzero()[0]
+        if len(idx) == 1:
+            start_indices.append(idx[0])
+            found_references.append(reference_mask)
+
+    # Get the indices with which each segment ends
+    end_indices = start_indices[1:]
+    end_indices.append(len(images))
+
+    # Go through each segment that starts with a reference mask 
+    # and ends before the next reference mask
+    masks = []
+    for i, (start, end, r_mask) in enumerate(zip(start_indices, end_indices, found_references)):
+        r_path = path.join(reference_mask_path, r_mask)
+        images_segment = image_paths[start: end]
+        print(f"Starting with segment {i + 1} of {len(start_indices)}")
+        masks.extend(background_substract(images_segment, r_path))
 
     # Create output folder if does not exists
     if not os.path.isdir(output_path):
@@ -177,7 +202,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="""
         Creates masks using Background-Subtraction with GMM
         This algorithm reads a set of input images specified by the input parameter
-        and an inital fore-ground mask that corresponds to the first image. 
+        and an inital foreground mask that corresponds to the first image. 
         It then propagates the calculated/given foreground mask through the timeseries.
         Finally writes computed masks to the specified output folder.
     """)
@@ -187,7 +212,7 @@ if __name__ == "__main__":
         required=True)
  
     parser.add_argument("--background-image", "-b",
-        help="Path to the first background image (corresponds to the first image in <input-path>",
+        help="Path to the background segments. This should include the first image as well.",
         required=True)   
 
     parser.add_argument("--output-path", "-o",
