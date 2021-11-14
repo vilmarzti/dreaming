@@ -124,8 +124,8 @@ def background_substract(image_paths, first_background):
 
     # Add a first background image to bootstrap the feedback loop
     fg_mask_post = cv2.imread(first_background, cv2.IMREAD_GRAYSCALE)
-    fg_mask_post = np.where(fg_mask < 127, 0, 255).astype(np.uint8)
-    masks.append(fg_mask)
+    fg_mask_post = np.where(fg_mask_post < 127, 0, 255).astype(np.uint8)
+    masks.append(fg_mask_post)
 
     # Go through the remaining images
     for i, path in enumerate(image_paths[1:]):
@@ -148,6 +148,8 @@ def background_substract(image_paths, first_background):
 def process_folder(input_path, first_background_image, output_path):
     images = os.listdir(input_path)
     images.sort()
+
+    images = images[:10]
 
     image_paths = [path.join(input_path, x) for x in images]
     mask_paths = list(map(lambda x: str(path.join(output_path, x)), images))
@@ -177,4 +179,4 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    process_folder(args.input_path, args.output_path)
+    process_folder(args.input_path, args.background_image, args.output_path)
