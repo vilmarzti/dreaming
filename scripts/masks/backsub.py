@@ -86,7 +86,7 @@ def morphological_closing(foreground_mask, kernel_width=19):
 # Apply area threshold where all blobs with less than <alpha> pixel are discarded
 def area_thresholding(foreground_mask, alpha=0.01):
     min_num_pixels = foreground_mask.shape[0] * foreground_mask.shape[1] * alpha
-    contours, hier = cv2.findContours(foreground_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    _, contours, _ = cv2.findContours(foreground_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     big_contours = []
 
     # Find blobs and save those that have the appropriate size

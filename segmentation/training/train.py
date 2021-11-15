@@ -76,16 +76,16 @@ def create_train(
 
         # Train 
         train_set = TrainDataset(
-            "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/train_input",
-            "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/train_output",
+            "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/train_input",
+            "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/train_output",
             crop_size,
             cvt_flag,
             add_encoding
         )
 
         valid_set = TestDataset(
-            "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_input",
-            "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/valid_output",
+            "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/valid_input",
+            "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/valid_output",
             crop_size,
             cvt_flag,
             add_encoding
