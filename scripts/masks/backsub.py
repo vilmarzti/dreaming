@@ -211,7 +211,7 @@ if __name__ == "__main__":
         help="The path to the folder with the images",
         required=True)
  
-    parser.add_argument("--background-image", "-b",
+    parser.add_argument("--background-images", "-b",
         help="Path to the background segments. This should include the first image as well.",
         required=True)   
 
@@ -221,4 +221,4 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    process_folder(args.input_path, args.background_image, args.output_path)
+    process_folder(args.input_path, args.background_images, args.output_path)
