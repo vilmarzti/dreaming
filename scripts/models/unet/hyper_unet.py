@@ -40,7 +40,6 @@ def main(num_samples, max_num_epochs=20, gpus_per_trial=0.5):
     train = create_train(
         create_unet,
         252,             # This creates an output with minimal loss of height and size for Unet of depth 2/3
-        None,
         True,
         transform="crop"
     )
@@ -48,7 +47,6 @@ def main(num_samples, max_num_epochs=20, gpus_per_trial=0.5):
     test_best_model = create_test_best(
         create_unet,
         252,
-        None,
         True,
         transform="crop"
     )

@@ -44,7 +44,6 @@ config = {
 train_func = create_train(
     create_unet,
     252,
-    None,
     True,
     False,
     "crop"

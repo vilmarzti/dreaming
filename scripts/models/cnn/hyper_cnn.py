@@ -42,7 +42,6 @@ def main(num_samples, max_num_epochs=30, gpus_per_trial=0.5):
     train = create_train(
         create_cnn,
         300,
-        None,
         True,
         transform="scale"
     )
@@ -50,7 +49,6 @@ def main(num_samples, max_num_epochs=30, gpus_per_trial=0.5):
     test_best_model = create_test_best(
         create_cnn,
         5,
-        None,
         True,
         transform="scale"
     )

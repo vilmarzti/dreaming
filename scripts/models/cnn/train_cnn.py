@@ -6,7 +6,7 @@ train = create_train(
     300,
     True,
     False,
-    "scale"
+    "crop"
 )
 
 config = {

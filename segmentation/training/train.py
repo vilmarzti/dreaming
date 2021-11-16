@@ -1,8 +1,8 @@
-from torch._C import Value
 from torch.nn.functional import interpolate
 from torch.nn.modules.loss import BCELoss
 
 from segmentation.data.dataset import TestDataset, TrainDataset 
+from segmentation.helper.metrics import jaccard_index
 
 from torch.utils.data import DataLoader
 
@@ -13,53 +13,63 @@ import torch.optim as optim
 
 import os
 
-def crop_or_scale(outputs, targets, transform):
+
+def crop_or_scale(predictions, targets, transform="scale"):
     """
-        Helper function that checks whether the output of a model has the same dimension as the target
-        If they don't the output gets either scaled, or cropped
+        Helper function that that shapes the predictions and targets into the same format.
+
+    Args:
+        predictions (torch.tensor): The predictions of size (B, C, H, W) 
+            Where B is the number of Batches, C the number of Channels, H is height and W is width
+        targets (torch.tensor):  The targets of size (B, H, W)
+            Where B is the batch-size, H the height and W is the width
+        transform (str, optional): Should be one of ["scale", "crop"]. If None is provided raises an error. Defaults to "scale".
+
+    Raises:
+        ValueError: If transform is None and the target and prediction shape doesn't match
+
+    Returns:
+        [(torch.Tensor, torch.Tensor)]: A dict of the transformed predictions and targets
     """
-    if outputs.shape[1] != targets.shape[1] or outputs.shape[2] != outputs.shape[2]:
+    if predictions.shape[2] != targets.shape[1] or predictions.shape[3] != targets.shape[2]:
         if transform == "scale":
-            outputs = interpolate(outputs, (targets.shape[1], targets.shape[1]), mode="bilinear", align_corners=False)
+            predictions = interpolate(predictions, (targets.shape[1], targets.shape[2]), mode="bilinear", align_corners=False)
         elif transform == "crop":
-            diff_y = (targets.shape[1] - outputs.shape[1]) // 2
-            diff_x = (targets.shape[2] - outputs.shape[2]) // 2
-            targets = targets[:, diff_y: diff_y + outputs.shape[1], diff_x: diff_x + outputs.shape[2]]
+            diff_y = (targets.shape[1] - predictions.shape[2]) // 2
+            diff_x = (targets.shape[2] - predictions.shape[3]) // 2
+            targets = targets[:, diff_y: diff_y + predictions.shape[2], diff_x: diff_x + predictions.shape[3]]
         else:
-            raise ValueError(f"Outputs of the Model has not the same shape as target.\nOutput shape{outputs.shape} Target shape: {targets.shape}\nPlease provide the right transform argument in the training function")
-    return outputs,targets 
+            raise ValueError(f"predictions of the Model has not the same shape as target.\nOutput shape{predictions.shape} Target shape: {targets.shape}\nPlease provide the right transform argument in the training function")
+    return predictions,targets 
 
-def jaccard_index(pred_labels, target_labels, device="cpu"):
+def create_train(create_model, crop_size, add_encoding, use_tune=True, transform=None):
+    """ Creates a train function that can be called from ray.tune or started with a costum config.
+
+    Args:
+        create_model (function): A function that takes in a config-dict and generates a  corresponding model.
+            For example create_cnn creates a cnn from a given config. Check out segmentation.helper.create_models for available methods
+        crop_size (int or tuple of ints): Tells the train- and validationdataset how much to crop the samples.
+        add_encoding (bool): Add positional encoding to the datasets if true. If not no positional encoding is provided
+        use_tune (bool, optional): Whether to use tune during execution of the returned train function. 
+            Set this to False when executing training without tune. Defaults to True.
+        transform (str, optional): How to transform the output of the model or the labels if their sizes mismatch. 
+            Can be either "crop" for cropping the targets or "scale" for interpolating the predictions.
+            Compare with method crop_or_scale. Defaults to None.
+
+    Returns:
+        A training function that runs the trainig for a specific model. The arguments to the function are a config file for creating
+        the model and a checkpoint_dir if tune wants to resume from a checkpoint.
     """
-        Computes the Jaccard index
-    """
-    # Cast to same type
-    pred_labels = pred_labels.int()
-    target_labels = target_labels.int()
 
-    # Compute union and intersection
-    union = torch.bitwise_or(pred_labels, target_labels).sum()
-    intersection = torch.bitwise_and(pred_labels, target_labels).sum()
-
-    # Exception when union is 0
-    if union == 0:
-        return torch.tensor(1.0, device=device)
-    else:
-        return intersection / union
-
-
-
-
-# General params
-def create_train(
-    create_model,  # The function that creates a model (unet, cnn, etc) from a given config
-    crop_size,     # Dataset parameter that says how big the images should get cropped
-    cvt_flag,      # Conversion flag for the Dataset. Can be used to create a hsv or gray-scale image
-    add_encoding,  # If the dataset should add sin/linear positional encoding
-    use_tune=True, # Disable when running without tune hyper-paramtersearch
-    transform=None # Either "crop" or "scale". Is used with to decide whether to crop/scale the outputs to the right size
-):
     def train(config, checkpoint_dir=None):
+        """Trains a network on a created model given a config.
+
+        Args:
+            config (dict): Contains the parameters of how to create the model. 
+                Compare to the create_model parameter of the parent function.
+            checkpoint_dir (str, optional): A model checkpoint-dir from which to load a model.
+                The config of the model should correspond to the model in the checkpoint. Defaults to None.
+        """
         # Other params
         learning_rate = config["learning_rate"]
         batch_size = config["batch_size"]
@@ -79,7 +89,6 @@ def create_train(
             "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/train_input",
             "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/train_output",
             crop_size,
-            cvt_flag,
             add_encoding
         )
 
@@ -87,7 +96,6 @@ def create_train(
             "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/valid_input",
             "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/valid_output",
             crop_size,
-            cvt_flag,
             add_encoding
         )
 
@@ -101,7 +109,6 @@ def create_train(
             optimizer.load_state_dict(optimizer_state)
         
         # Train on equal num of expamples no matter the batchsize
-        # len(train_loader) = len(train_set)/ batch_size
         max_steps_train = len(train_loader) // (1000 / batch_size)
 
         for epoch in range(1000):
@@ -119,10 +126,10 @@ def create_train(
 
                 outputs = net(inputs)
 
-                outputs = torch.squeeze(outputs)
-
                 # either interpolate outputs or crop target if it does not have same size
                 outputs, labels = crop_or_scale(outputs, labels, transform)
+
+                outputs = torch.squeeze(outputs, 1)
 
                 loss = criterion(outputs, labels)
                 loss.backward()
@@ -143,10 +150,11 @@ def create_train(
                     labels = labels.to(device)
 
                     outputs = net(inputs)
-                    outputs = torch.squeeze(outputs, 1)
                     
                     # Either crop or scale the labels, oututs
                     outputs, labels = crop_or_scale(outputs, labels, transform)
+
+                    outputs = torch.squeeze(outputs, 1)
 
                     # compute validation loss
                     val_loss = criterion(outputs, labels)
@@ -179,8 +187,29 @@ def create_train(
     
     return train
 
-def create_test_best(create_model, crop_size, cvt_flag, add_encoding, transform=None):
+def create_test_best(create_model, crop_size, add_encoding, transform=None):
+    """Generates a function for testing a model
+
+    Args:
+        create_model (function): A function that creates a model from a given config.
+            See segmentation.helper.create_model for available functions
+        crop_size (int or tuple of ints): Tells the test-dataset how much to crop the samples.
+        add_encoding (bool): Add positional encoding to the datasets if true. If not no positional encoding is provided
+        transform (str, optional): How to transform the output of the model or the labels if their sizes mismatch. 
+            Can be either "crop" for cropping the targets or "scale" for interpolating the predictions.
+            Compare with method crop_or_scale. Defaults to None.
+    
+    Returns:
+        A function that test a model given a ray.tune trial
+
+    """
     def test_best_model(best_trial):
+        """ Tests a trial on a given test-set and print results.
+
+        Args:
+            best_trial (ray.tune.trial): The trial we want to test. The trial model should correspond to
+                the create_model method supplied in the create_test_best function.
+        """
         config = best_trial.config
 
         device = "cuda:0" if torch.cuda.is_available else "cpu"
@@ -199,7 +228,6 @@ def create_test_best(create_model, crop_size, cvt_flag, add_encoding, transform=
             "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/test_input",
             "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/test_output",
             crop_size,
-            cvt_flag,
             add_encoding
         )
 
@@ -214,9 +242,9 @@ def create_test_best(create_model, crop_size, cvt_flag, add_encoding, transform=
                 labels = labels.to(device)
 
                 outputs = net(inputs)
-                outputs.squeeze(1)
-
                 outputs, labels = crop_or_scale(outputs, labels, transform)
+
+                outputs = torch.squeeze(outputs, 1)
 
                 output_labels = (outputs > 0.5).type(torch.uint8)
     
