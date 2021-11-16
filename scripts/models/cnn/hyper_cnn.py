@@ -14,7 +14,7 @@ def main(num_samples, max_num_epochs=30, gpus_per_trial=0.5):
     config = {
         "kernel_size": tune.randint(3, 10),
         "intermidiate_channels": tune.randint(1, 5),
-        "num_layers": tune.randint(2, 5),
+        "num_layers": tune.randint(2, 6),
         "thin": tune.choice([True, False]),
         "positional_encoding": tune.choice(["sin", "linear", None]),
         "padding": tune.choice(["reflection", "zero", "replication", None]),

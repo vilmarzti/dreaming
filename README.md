@@ -39,24 +39,43 @@ First you need a small dataset on that we're able to train our segmentation NN. 
 
 Having done that split the frames into two parts. One for training and validating the simple NN segmentations and one for the ensemble-learning. I used a slightly bigger dataset for ensemble as that will give me the final result.
 
-For each of the ensemble-learning and NN methods create folder called `train_input train_output valid_input valid_output test_input test_output` with the corresponding train, valid and test dataset
+For each of the ensemble-learning and NN methods create folder called `train_input train_output valid_input valid_output test_input test_output` with the corresponding train, valid and test dataset.
 
-#### Create variouse segmentation with different algorithm
+The directories should have a similar patter to this.
 
-I use different versions of segmentation algorithms to create segmentations of the frames, these will then get combined to create a final segmentation. 
+```
+.
+├── ensemble
+│   ├── test_input
+│   ├── test_output
+│   ├── train_input
+│   ├── train_output
+│   ├── valid_input
+│   └── valid_output
+└── nn
+    ├── test_input
+    ├── test_output
+    ├── train_input
+    ├── train_output
+    ├── valid_input
+    └── valid_output
+```
 
-##### Using ConvNet
+
+#### Train the models on the segmentation dataset
+
+##### Train the convolutional-NN
 
 This is a a rather simple Convolution Neural networks with mulitple hyper-paramters. It is located at `segmentation/models/cnn.py` to find the right hyper-parameters use the script provided in 
 `scripts/models/cnn/hyper_cnn.py`
 
-TODO: creating masks
-
-##### Using UNet
+##### Train UNet
 
 An implementation of the UNET architecture, this has maximally 3 down and up convolutions but your are invited to try more. The model is located at `segmentation/models/unet.py`. Use the script provided in `scirpts/models/unet/hyper_unet.py`to find the right hyper-parameters and the right model.
 
-TODO: creating masks
+#### Create masks using various models or algorithms.
+
+After training the ConvNet and UNet we are ready to create the segmentation masks for our video
 
 ##### Background Subtraction
 
@@ -64,7 +83,7 @@ Here I use a background-subtraction algorithm to create masks. As I noticed that
 
 ##### GMMs
 
-GMMs are use to model the color distribution of the frames. Use the scirpt `scripts/masks/find_num_gmm.py` to find the appropriate number of components in your gmm.
+GMMs are use to model the color distribution of the frames. Use the scirpt `scripts/masks/find_num_gmm.py` to find the appropriate number of components in your gmm. This algorithm is mostly applicable if your foreground and background have the same color distribution over the length of the video.
 
 TODO: creating masks
 
@@ -72,7 +91,7 @@ TODO: creating masks
 
 GrabCut is an algorithm for segmentation, you give it a rough estimate of your segmentation and it executes a finer segmentation based on the pixel-values in your frame. This script is fine-tuned for my spefic video. You probably have to change the different parameters for it to work with a different video.
 
-#### Ensemble
+####  Use ensemble learning to aggregate the different masks
 
 TODO
 
@@ -85,6 +104,7 @@ TODO
 TODO
 
 ## Structure of the segmentation folder
+
 TODO
 
 ## Structure of the scirpts folder
