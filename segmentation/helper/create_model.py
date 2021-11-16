@@ -1,4 +1,4 @@
-from segmentation.models import CNNSegmentation, RangeImage, UNet
+from segmentation.models import CNNSegmentation, UNet
 
 
 def create_cnn(config):
@@ -13,13 +13,6 @@ def create_cnn(config):
 
     net = CNNSegmentation(kernel_size, input_channels, intermidiate_channels, num_layers, thin, positional_encoding, padding)
 
-    return net
-
-def create_rangeimage(config):
-    input_channels = 3
-    kernel_size = config["kernel_size"]
-
-    net = RangeImage(input_channels, kernel_size)
     return net
 
 def create_unet(config):

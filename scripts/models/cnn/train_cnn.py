@@ -4,20 +4,20 @@ from segmentation.training import create_train
 train = create_train(
     create_cnn,
     300,
-    None,
     True,
-    False
+    False,
+    "scale"
 )
 
 config = {
-    "kernel_size": 3,
-    "intermidiate_channels": 1,
-    "num_layers": 2,
-    "thin": True,
-    "positional_encoding": None,
-    "padding": None,
-    "learning_rate": 0.01,
-    "batch_size": 32,
+  "batch_size": 8,
+  "intermidiate_channels": 2,
+  "kernel_size": 5,
+  "learning_rate": 0.0014633545069953977,
+  "num_layers": 4,
+  "padding": None,
+  "positional_encoding": "linear",
+  "thin": False
 }
 
 train(config)

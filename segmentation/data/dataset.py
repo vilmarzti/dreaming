@@ -27,11 +27,10 @@ def subtract_mean(images):
     return images
 
 class CNNDataset(Dataset):
-    def __init__(self, input_path, output_path, cvt_flag=None, add_encoding=True):
+    def __init__(self, input_path, output_path, add_encoding=True):
         self.input_path = input_path
         self.output_path = output_path
         self.add_encoding = add_encoding
-        self.cvt_flag = cvt_flag
 
         self.images_input = self.read_images(input_path, cv2.IMREAD_COLOR)
         self.images_output = self.read_images(output_path, cv2.IMREAD_GRAYSCALE)
@@ -39,26 +38,8 @@ class CNNDataset(Dataset):
         # Make sure that mask has values 0 and 1
         self.images_output = np.where(self.images_output < 128, 0, 1)
 
-        # Convert to HSV or Gray
-        if cvt_flag:
-            self.images_input = [cv2.cvtColor(image, cvt_flag) for image in self.images_input]
-            self.images_input = np.array(self.images_input)
-        
-        # Preprocessing for threshold net
-        if cvt_flag == cv2.COLOR_BGR2GRAY:
-            # Prepare for threshold net
-            self.images_input = scale_for_sigmoid(normalize(self.images_input))
-            self.images_input = np.expand_dims(self.images_input, axis=3)
-
-        # Prepare for threshold net
-        elif cvt_flag == cv2.COLOR_BGR2HSV:
-            self.images_input[:,:,:,0] = scale_for_sigmoid(normalize(self.images_input[:,:,:,0]))
-            self.images_input[:,:,:,1] = scale_for_sigmoid(normalize(self.images_input[:,:,:,1]))
-            self.images_input[:,:,:,2] = scale_for_sigmoid(normalize(self.images_input[:,:,:,2]))
-
         #  Prepare for normal segmentation
-        else:  
-            self.images_input = subtract_mean(self.images_input)
+        self.images_input = subtract_mean(self.images_input)
 
         if add_encoding:
             # get encodings
@@ -92,10 +73,10 @@ class CNNDataset(Dataset):
         return np.array(images)
 
 class TrainDataset(CNNDataset):
-    def __init__(self, input_path, output_path, crop_size, cvt_flag=None, add_encoding=True, random_transforms=True):
-        super().__init__(input_path, output_path, cvt_flag, add_encoding)
+    def __init__(self, input_path, output_path, crop_size, add_encoding=True, random_transforms=True):
+        super().__init__(input_path, output_path, add_encoding)
 
-        self.random_transforms = random_transforms and not cvt_flag
+        self.random_transforms = random_transforms
 
         # Define the number of crops
         if type(crop_size) is int:
@@ -192,8 +173,8 @@ class TestDataset(CNNDataset):
         Compared to Train dataset where images returned can overlap.
         This class returns only non-overlapping images/labels
     """
-    def __init__(self, input_path, output_path, crop_size, cvt_flag=None, add_encoding=True):
-        super().__init__(input_path, output_path, cvt_flag=cvt_flag, add_encoding=add_encoding)
+    def __init__(self, input_path, output_path, crop_size, add_encoding=True):
+        super().__init__(input_path, output_path, add_encoding=add_encoding)
 
         # Define the number of crops
         if type(crop_size) is int:
