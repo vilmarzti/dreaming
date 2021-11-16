@@ -39,7 +39,7 @@ First you need a small dataset on that we're able to train our segmentation NN. 
 
 Having done that split the frames into two parts. One for training and validating the simple NN segmentations and one for the ensemble-learning. I used a slightly bigger dataset for ensemble as that will give me the final result.
 
-For each of the ensemble-learning and NN methods create folder called `train_input train_output valid_input valid_output test_input test_output` with the corresponding train, valid and test dataset.
+For the ensemble-learning and NN methods create each a folder called `train_input train_output valid_input valid_output test_input test_output` with the corresponding train, valid and test dataset.
 
 The directories should have a similar patter to this.
 
