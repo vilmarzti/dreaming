@@ -162,6 +162,7 @@ class TrainDataset(SegmentationDataset):
         explained_variance_ratio: <explained_variance_ratio> but scaled such that it sums up to one.
         principal_components: The principal components found with PCA.
     """
+
     def __init__(self, input_path, output_path, crop_size, add_encoding=True, random_transforms=True):
         """Initializes the Traindataset.
 
