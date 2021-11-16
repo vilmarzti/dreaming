@@ -43,7 +43,7 @@ For the ensemble-learning and NN methods create each a folder called `train_inpu
 
 Also create a folder for the background-subtraction algorithm. This should include the the segmentation masks that are used for training the NN's.
 
-The directories should have a similar pattern to this. Note the `backsub` folder which includes the above mentioned masks.
+The directories should have a similar pattern to this. Note the `backsub` folder which includes the above mentioned masks for the background subtraction algorithm.
 
 ```
 .
