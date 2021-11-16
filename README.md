@@ -41,10 +41,13 @@ Having done that split the frames into two parts. One for training and validatin
 
 For the ensemble-learning and NN methods create each a folder called `train_input train_output valid_input valid_output test_input test_output` with the corresponding train, valid and test dataset.
 
-The directories should have a similar patter to this.
+Also create a folder for the background-subtraction algorithm. This should include the the segmentation masks that are used for training the NN's.
+
+The directories should have a similar pattern to this. Note the `backsub` folder which includes the above mentioned masks.
 
 ```
 .
+├── backsub
 ├── ensemble
 │   ├── test_input
 │   ├── test_output
@@ -59,6 +62,7 @@ The directories should have a similar patter to this.
     ├── train_output
     ├── valid_input
     └── valid_output
+
 ```
 
 
