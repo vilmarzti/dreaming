@@ -42,6 +42,7 @@ class SegmentationDataset(Dataset):
         num_images: The number of images tuples we have
         num_crops_x: The number of crops in the x direction
         num_crops_y: The number of crops in the y direction
+        image_size: Tuple (width, height) of the images
         total_crops: The number of crops possible per image
     """
     def __init__(self, paths, crop_size, read_flags=[], preprocess=[]):
@@ -90,6 +91,10 @@ class SegmentationDataset(Dataset):
         if len(preprocess) == len(self.paths):
             for i in range(len(self.images_list)):
                 self.images_list[i] = preprocess[i](self.images_list[i])
+        
+        # Set the image size (x, y) after preprocessing
+        # It's assumed that all images have the same dimensions
+        self.image_size = (self.images_list[0].shape[3], self.images_list[0].shape[2])
 
     def __len__(self):
         """Should be implemented by child calsses
@@ -175,8 +180,8 @@ class TrainDataset(SegmentationDataset):
 
         self.random_transforms = random_transforms
 
-        self.num_crops_x = IMAGE_SIZE_X - self.x_crop + 1
-        self.num_crops_y = IMAGE_SIZE_Y - self.y_crop + 1
+        self.num_crops_x = self.image_size[0] - self.x_crop + 1
+        self.num_crops_y = self.image_size[1] - self.y_crop + 1
 
         self.total_crops = self.num_crops_x * self.num_crops_y
 
@@ -317,8 +322,8 @@ class TestDataset(SegmentationDataset):
         """
         super().__init__(paths, crop_size, read_flags, preprocess)
 
-        self.num_crops_x = IMAGE_SIZE_X // self.x_crop
-        self.num_crops_y = IMAGE_SIZE_Y // self.y_crop
+        self.num_crops_x = self.image_size[0] // self.x_crop
+        self.num_crops_y = self.image_size[1] // self.y_crop
 
         self.total_crops = self.num_crops_x * self.num_crops_y
     

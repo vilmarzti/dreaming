@@ -5,8 +5,25 @@ import numpy as np
 
 from ..constants import BGR_MEAN, IMAGE_SIZE_Y, IMAGE_SIZE_X
 
+
 def compose(*functions):
     return functools.reduce(lambda f, g: lambda x: f(g(x)), functions, lambda x: x)
+
+def pad_reflect(images, pad_size):
+    """ Pad with reflection to a certain size
+
+    Args:
+        images (numpy.ndarray): Has the shape (n, c, h, w) where n is the number of images, c are the channels, h is the height and w is the width
+            Reflect_pads along the last two axis.
+        pad_size (tuple[int, int]): To which size to pad. Pad should be greater than (w, h)
+    Returns:
+        A numpy array with the shape (n, c, pad_y, pad_x)
+    """
+    pad_right = pad_size[0] - images.shape[3]
+    pad_bot = pad_size[1] - images.shape[2]
+    padded = np.pad(images, ((0, 0), (0, 0), (0, pad_bot), (0, pad_right)), mode="reflect")
+    return padded
+
 
 def subtract_mean(images):
     """Subtract the mean some images
