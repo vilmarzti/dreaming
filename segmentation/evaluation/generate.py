@@ -9,6 +9,7 @@ from os import path
 
 from ..helper import preprocessing
 
+
 def compute_segmentation(image, tiles_x, tiles_y, size, cnn, device):
     segmentation = np.zeros((1, image.shape[2], image.shape[3]))
     for y in range(tiles_y):
@@ -25,6 +26,7 @@ def generate_segmentations(input_path, output_path, create_model, config, checkp
     tiles_x = math.ceil(image_size[0] / tile_size)
     tiles_y = math.ceil(image_size[1] / tile_size)
 
+    # Check if cuda is available
     device="cuda:0" if torch.cuda.is_available else "cpu"
 
     # Load model from checkpoint
@@ -35,7 +37,7 @@ def generate_segmentations(input_path, output_path, create_model, config, checkp
     # Put model to gpu if possible
     cnn = model.to(device)
 
-    # How to preprocess the images
+    # preprocess function for the images
     preprocess = [
         lambda x: preprocessing.pad_reflect(x, (tiles_x * tile_size, tiles_y * tile_size)) ,
         preprocessing.add_encoding,
@@ -64,5 +66,5 @@ def generate_segmentations(input_path, output_path, create_model, config, checkp
             segmentation = compute_segmentation(image, tiles_x, tiles_y, tile_size, cnn, device)
 
         # save segment image
-        segmentation = np.array(segmentation[0,:image_size[1], :image_size[0]] * 255, np.uint8)
+        segmentation = np.array(segmentation[0, :image_size[1], :image_size[0]] * 255, np.uint8)
         cv2.imwrite(path.join(output_path, i_name), segmentation)

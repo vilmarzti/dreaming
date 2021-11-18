@@ -1,14 +1,14 @@
-import cv2
 import os
+import cv2
 
 import torch
 import torch.optim as optim
 
 from ray import tune
 
-from torch.nn.functional import interpolate 
-from torch.nn.modules.loss import BCELoss
 from torch.utils.data import DataLoader
+from torch.nn.modules.loss import BCELoss
+from torch.nn.functional import interpolate 
 
 from segmentation.helper import preprocessing
 from segmentation.data.dataset import TestDataset, TrainDataset 
@@ -41,7 +41,7 @@ def crop_or_scale(predictions, targets, transform="scale"):
             targets = targets[:, diff_y: diff_y + predictions.shape[1], diff_x: diff_x + predictions.shape[2]]
         else:
             raise ValueError(f"predictions of the Model has not the same shape as target.\nOutput shape{predictions.shape} Target shape: {targets.shape}\nPlease provide the right transform argument in the training function")
-    return predictions,targets 
+    return predictions, targets 
 
 def create_train(create_model, crop_size, add_encoding, use_tune=True, transform=None):
     """ Creates a train function that can be called from ray.tune or started with a costum config.

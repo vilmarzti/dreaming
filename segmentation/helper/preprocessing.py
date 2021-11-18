@@ -34,7 +34,7 @@ def subtract_mean(images):
     """Subtract the mean some images
 
     The mean values that have been provided are from scripts/preprocessing/get_mean_rgb.py. 
-    Execute it and substitute the values here with the values the script generated.
+    Execute it and substitute the values in constants.py
 
     Args:
         images (numpy.ndarray): Has the shape (n, h, w), where n is the number of images, h is the height and w is the width.
@@ -140,7 +140,3 @@ def positionalencoding2d_linear(width, height):
 
     encoding = np.stack([x_encoding, y_encoding], axis=2)
     return encoding
-
-
-
-
