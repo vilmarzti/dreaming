@@ -1,8 +1,12 @@
 import math
 import torch
+import functools
 import numpy as np
 
 from ..constants import BGR_MEAN, IMAGE_SIZE_Y, IMAGE_SIZE_X
+
+def compose(*functions):
+    return functools.reduce(lambda f, g: lambda x: f(g(x)), functions, lambda x: x)
 
 def subtract_mean(images):
     """Subtract the mean some images

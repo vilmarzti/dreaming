@@ -121,6 +121,23 @@ class SegmentationDataset(Dataset):
             images = np.transpose(images, [0, 3, 1, 2])
 
         return images
+    
+    def crop_position(self, img_idx, upper_left):
+        """Crops images from a given position.
+
+        Args:
+            img_idx (int): Int that tells us the position of the image we want to crop
+            upper_left (tuple[int, int]): The upper left corner given in (x, y) coordinates
+        Returns:
+            Return a list with images that have been cropped
+        """
+        cropped = []
+        for i in range(self.images_list):
+            images = self.images_list[i]
+            cropped = images[img_idx, ..., upper_left[1]: upper_left[1] + self.y_crop, upper_left[0]: upper_left[0] + self.x_crop]
+        return cropped
+
+       
 
 
 class TrainDataset(SegmentationDataset):
@@ -198,10 +215,7 @@ class TrainDataset(SegmentationDataset):
         y_value = (idx // self.num_crops_x) % self.num_crops_y
 
         # Crop images
-        cropped = []
-        for i in range(self.images_list):
-            images = self.images_list[i]
-            cropped = images[img_num, ..., y_value: y_value + self.y_crop, x_value: x_value + self.x_crop]
+        cropped = self.crop_position(img_num, (x_value, y_value))
 
         # Convert to single precision float
         cropped = [np.single(c) for c in cropped]
@@ -220,11 +234,11 @@ class TrainDataset(SegmentationDataset):
         Returns:
             The transformed sections
         """
-        images = self.random_flip(image_set)
-        images = self.random_rotate(images)
-        images = self.random_pertubations(images)
-        images = [i.copy() for i in images]
-        return images
+        image_set = self.random_flip(image_set)
+        image_set = self.random_rotate(image_set)
+        image_set = self.random_pertubations(image_set)
+        image_set = [i.copy() for i in image_set]
+        return image_set
     
     def random_flip(self, image_set):
         """Randomly flips the data along an axis
@@ -324,19 +338,20 @@ class TestDataset(SegmentationDataset):
             idx (int): Int in range [0, len(self)]
 
         Returns:
-            A tuple (inputs, outputs) that are cut from an image in the dataset. There is a one-to-one correspondence between these two.
+            A list of cropped sections
         """
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
+        # Compute position of non-overlapping section
         img_num = idx // self.total_crops
         index_x = (idx % self.num_crops_x) * self.x_crop
         index_y = ((idx % self.total_crops) // self.num_crops_x) * self.y_crop
 
-        inputs = self.images_input[img_num, :, index_y: index_y + self.y_crop, index_x : index_x + self.y_crop]
-        outputs = self.images_output[img_num, index_y: index_y + self.y_crop, index_x : index_x + self.y_crop]
+        # Crop at position
+        cropped = self.crop_position(img_num, (index_x, index_y))
 
-        inputs = np.single(inputs)
-        outputs = np.single(outputs)
+        # Convert to single float
+        cropped = [np.single(i) for i in cropped]
 
-        return inputs, outputs
+        return cropped
