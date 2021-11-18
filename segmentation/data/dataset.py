@@ -17,7 +17,7 @@ import numpy as np
 
 from torch.utils.data import Dataset
 
-from ..constants import EXPLAINED_VARIANCE, EXPLAINED_VARIANCE_RATIO, IMAGE_SIZE_X, IMAGE_SIZE_Y, PRINCIPAL_COMPONENTS
+from ..constants import EXPLAINED_VARIANCE, EXPLAINED_VARIANCE_RATIO, PRINCIPAL_COMPONENTS
 
 
 class SegmentationDataset(Dataset):
@@ -147,9 +147,6 @@ class SegmentationDataset(Dataset):
             cropped_set.append(cropped)
         return cropped_set
 
-       
-
-
 class TrainDataset(SegmentationDataset):
     """Implements SegmenationDataset where the outputs are overlapping sections of the original images.
 
@@ -184,16 +181,6 @@ class TrainDataset(SegmentationDataset):
         self.num_crops_y = self.image_size[1] - self.y_crop + 1
 
         self.total_crops = self.num_crops_x * self.num_crops_y
-
-        # These are the values you get from transforming the rgb pixels into PCA space
-        # I used the script in scripts/preprocessing/compute_pca.py to get them
-        self.explained_variance = EXPLAINED_VARIANCE
-        self.explained_variance_ratio = EXPLAINED_VARIANCE_RATIO
-        self.principal_compoments = PRINCIPAL_COMPONENTS
-
-        self.explained_variance = np.array(self.explained_variance)
-        self.explained_variance_ratio = np.array(self.explained_variance_ratio)
-        self.principal_compoments = np.array(self.principal_compoments)
 
     def __len__(self):
         """Returns the total number of possible crops in the dataset
@@ -312,13 +299,16 @@ class TrainDataset(SegmentationDataset):
 
 class TestDataset(SegmentationDataset):
     """Implements SegmenationDataset where the outputs are non-overlapping sections of the original images.
-
-    The Image size is assumed to be (720x1280). Change this number accordingly to your use case.
     """
     def __init__(self, paths, crop_size, read_flags=[], preprocess=[]):
         """Initializes the TestDataset by calling its parent class and setting the appropriate number of crops
 
         Args:
+            paths (list(str)): See SegmentationDataset
+            crop_size (int, tuple[int, int]): See SegmentationDataset
+            read_flags (list[int]): See SegmentationDataset
+            preprocess (list(function), optional): See SegmentationDataset
+
         """
         super().__init__(paths, crop_size, read_flags, preprocess)
 
@@ -335,11 +325,11 @@ class TestDataset(SegmentationDataset):
     def __getitem__(self, idx):
         """Returns a section of an image based on idx.
 
-        The section is non-overlapping with other sections that get accessed with idx. 
+        The accessed section is non-overlapping with other sections that could get accessed 
         
-        The section are index in such a way that the first section (idx=0) is in the upper left in the first image.
-        The next section (idx=1) is shifted to the right by the <x_crop> until there is no space in the image left
-        where we wrap around to the next row of sections.
+        The section are indexed in such a way that the first section (idx=0) is in the upper left in the first image.
+        The next section (idx=1) is shifted to the right by <x_crop> until there is no space in the image left.
+        Then we wrap around (one pixel down) to the next row of sections.
 
         Args:
             idx (int): Int in range [0, len(self)]

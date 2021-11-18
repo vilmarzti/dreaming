@@ -3,7 +3,7 @@ import torch
 import functools
 import numpy as np
 
-from ..constants import BGR_MEAN, IMAGE_SIZE_Y, IMAGE_SIZE_X
+from ..constants import BGR_MEAN
 
 
 def compose(*functions):
@@ -51,21 +51,23 @@ def threshold(images, thres=128):
 def add_encoding(images):
     # get encodings
     num_images = images.shape[0]
+    image_size_x = images.shape[2]
+    image_size_y = images.shape[1]
 
     # Create linear encoding with channels at the second position
-    lin_encoding = positionalencoding2d_linear(IMAGE_SIZE_Y, IMAGE_SIZE_X)
+    lin_encoding = positionalencoding2d_linear(image_size_x, image_size_y)
     lin_encoding = np.repeat([lin_encoding], num_images, axis=0)
     lin_encoding = np.transpose(lin_encoding, (0, 3, 1, 2))
 
     # Create sinus encoding with channels at the second position
-    sin_encoding = positionalencoding2d_sin(4, IMAGE_SIZE_Y, IMAGE_SIZE_X)
+    sin_encoding = positionalencoding2d_sin(4, image_size_x, image_size_y)
     sin_encoding = np.repeat([sin_encoding], num_images, axis=0)
 
     # Add encoding
     images_with_encoding = np.concatenate([images, lin_encoding, sin_encoding], axis=1)
     return images_with_encoding
 
-def positionalencoding2d_sin(d_model, height, width):
+def positionalencoding2d_sin(d_model, width, height):
     """
     :param d_model: dimension of the model
     :param height: height of the positions
@@ -91,7 +93,7 @@ def positionalencoding2d_sin(d_model, height, width):
 
     return pe
 
-def positionalencoding2d_linear(height, width):
+def positionalencoding2d_linear(width, height):
     x_encoding = np.linspace(-0.5, 0.5, width)
     x_encoding = np.repeat([x_encoding], height, axis=0)
 
