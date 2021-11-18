@@ -7,6 +7,11 @@ from ..constants import BGR_MEAN
 
 
 def compose(*functions):
+    """Composes a list of functions
+
+    Returns:
+        A function that is the composition of inputs
+    """
     return functools.reduce(lambda f, g: lambda x: f(g(x)), functions, lambda x: x)
 
 def pad_reflect(images, pad_size):
@@ -45,10 +50,27 @@ def subtract_mean(images):
     return images
 
 def threshold(images, thres=128):
+    """Thresholds an image to 0, 1.
+
+    Args:
+        images (np.ndarray): Matrix (N, H, W) where n is the number of images, H the height, and W the width
+        thres (int, optional): [description]. At which value we threshold. Defaults to 128.
+
+    Returns:
+        Returns matrix of the same size but the inputs have been thresholded to 0/1
+    """
     thresh_images = np.where(images < thres, 0, 1)
     return thresh_images
 
 def add_encoding(images):
+    """Takes in RGB images and adds linear and sinus encoding
+
+    Args:
+        images (np.ndarray): Matrix (N, H, W, C) where n is the number of images, H the height, W the width , C the number of channels
+
+    Returns:
+        Returns a matrix with additiona positional encodings of size (N, H, W, C+6). 
+    """
     # get encodings
     num_images = images.shape[0]
     image_size_x = images.shape[2]
@@ -68,11 +90,17 @@ def add_encoding(images):
     return images_with_encoding
 
 def positionalencoding2d_sin(d_model, width, height):
-    """
-    :param d_model: dimension of the model
-    :param height: height of the positions
-    :param width: width of the positions
-    :return: d_model*height*width position matrix
+    """Adds positional encoding in 2d like it was described in "Attention is all you need"
+
+    Code taken from https://github.com/tatp22/multidim-positional-encoding
+
+    Args:
+        d_model (int): width of the positional encoding
+        height (int): height of the image
+        width (int). width of the image
+
+    Returns:
+        A matrix of size (4, H, W) where H is the height and W the width. Encodes position in two dimension
     """
     if d_model % 4 != 0:
         raise ValueError("Cannot use sin/cos positional encoding with "
@@ -94,6 +122,15 @@ def positionalencoding2d_sin(d_model, width, height):
     return pe
 
 def positionalencoding2d_linear(width, height):
+    """Add positional encoding by linearly increasing the values from -0.5 to 0.5
+
+    Args:
+        width (int): The width of the image.
+        height (int): The height of the image
+
+    Returns:
+        A matrix of size (2, H, W) where H is the heigt and W the width. 
+    """
     x_encoding = np.linspace(-0.5, 0.5, width)
     x_encoding = np.repeat([x_encoding], height, axis=0)
 

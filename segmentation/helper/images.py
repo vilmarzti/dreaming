@@ -1,16 +1,11 @@
 import os
-import sys
-
 from os import path
 
-sys.path.append("./Few-Shot-Patch-Based-Training/_tools/")
-import config
-
-def get_image_paths(input_path):
+def get_image_paths(input_path, frame_first=1, frame_last=-1):
     image_names = os.listdir(input_path)
     image_names.sort()
 
-    image_names = image_names[int(config.frameFirst) - 1: int(config.frameLast)]
+    image_names = image_names[frame_first - 1: frame_last]
     image_paths = [path.join(input_path, x) for x in image_names]
     return image_paths
 
