@@ -34,13 +34,13 @@ def crop_or_scale(predictions, targets, transform="scale"):
     Returns:
         [(torch.Tensor, torch.Tensor)]: A dict of the transformed predictions and targets
     """
-    if predictions.shape[2] != targets.shape[1] or predictions.shape[3] != targets.shape[2]:
+    if predictions.shape[1] != targets.shape[1] or predictions.shape[2] != targets.shape[2]:
         if transform == "scale":
             predictions = interpolate(predictions, (targets.shape[1], targets.shape[2]), mode="bilinear", align_corners=False)
         elif transform == "crop":
-            diff_y = (targets.shape[1] - predictions.shape[2]) // 2
-            diff_x = (targets.shape[2] - predictions.shape[3]) // 2
-            targets = targets[:, diff_y: diff_y + predictions.shape[2], diff_x: diff_x + predictions.shape[3]]
+            diff_y = (targets.shape[1] - predictions.shape[1]) // 2
+            diff_x = (targets.shape[2] - predictions.shape[2]) // 2
+            targets = targets[:, diff_y: diff_y + predictions.shape[1], diff_x: diff_x + predictions.shape[2]]
         else:
             raise ValueError(f"predictions of the Model has not the same shape as target.\nOutput shape{predictions.shape} Target shape: {targets.shape}\nPlease provide the right transform argument in the training function")
     return predictions,targets 
@@ -103,7 +103,7 @@ def create_train(create_model, crop_size, add_encoding, use_tune=True, transform
             ],
             preprocess=[
                 # Preprocess train_input with added encoding and and 
-                preprocessing.compose(input_preprocess),
+                preprocessing.compose(*input_preprocess),
                 preprocessing.threshold
             ],
             random_transforms=True
@@ -120,7 +120,7 @@ def create_train(create_model, crop_size, add_encoding, use_tune=True, transform
                 cv2.IMREAD_GRAYSCALE
             ],
             preprocess=[
-                preprocessing.compose(preprocess),
+                preprocessing.compose(*input_preprocess),
                 preprocessing.threshold
             ]
         )
@@ -152,10 +152,11 @@ def create_train(create_model, crop_size, add_encoding, use_tune=True, transform
 
                 outputs = net(inputs)
 
+                outputs = torch.squeeze(outputs, 1)
+                labels = torch.squeeze(labels, 1)
+
                 # either interpolate outputs or crop target if it does not have same size
                 outputs, labels = crop_or_scale(outputs, labels, transform)
-
-                outputs = torch.squeeze(outputs, 1)
 
                 loss = criterion(outputs, labels)
                 loss.backward()
@@ -175,12 +176,15 @@ def create_train(create_model, crop_size, add_encoding, use_tune=True, transform
                     inputs = inputs.to(device)
                     labels = labels.to(device)
 
+                    # Compute output of net
                     outputs = net(inputs)
-                    
+ 
+                    # Remove dimension
+                    outputs = torch.squeeze(outputs, 1)
+                    labels = torch.squeeze(labels, 1)                   
+
                     # Either crop or scale the labels, oututs
                     outputs, labels = crop_or_scale(outputs, labels, transform)
-
-                    outputs = torch.squeeze(outputs, 1)
 
                     # compute validation loss
                     val_loss = criterion(outputs, labels)
@@ -280,9 +284,11 @@ def create_test_best(create_model, crop_size, add_encoding, transform=None):
                 labels = labels.to(device)
 
                 outputs = net(inputs)
-                outputs, labels = crop_or_scale(outputs, labels, transform)
-
+                
                 outputs = torch.squeeze(outputs, 1)
+                labels = torch.squeeze(labels, 1)
+
+                outputs, labels = crop_or_scale(outputs, labels, transform)
 
                 output_labels = (outputs > 0.5).type(torch.uint8)
     

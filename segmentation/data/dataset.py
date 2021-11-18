@@ -39,6 +39,7 @@ class SegmentationDataset(Dataset):
         preprocess: List of (composed) functions that are applied after reading a set
         crop_size_x: The width of the returned image sections
         crop_size_y: The height of the returned image sections
+        num_images: The number of images tuples we have
         num_crops_x: The number of crops in the x direction
         num_crops_y: The number of crops in the y direction
         total_crops: The number of crops possible per image
@@ -78,14 +79,16 @@ class SegmentationDataset(Dataset):
 
         # Read all images with the appropriate flag
         self.images_list = []
-        for i in self.paths:
+        for i in range(len(self.paths)):
             read_flag = read_flags[i] if len(read_flags) == len(self.paths) else None
             images_path = self.paths[i]
             self.images_list.append(self.read_images(images_path, read_flag))
+        
+        self.num_images = self.images_list[0].shape[0]
 
         # Apply preprocessing
         if len(preprocess) == len(self.paths):
-            for i in range(self.images_list):
+            for i in range(len(self.images_list)):
                 self.images_list[i] = preprocess[i](self.images_list[i])
 
     def __len__(self):
@@ -132,11 +135,12 @@ class SegmentationDataset(Dataset):
         Returns:
             Return a list with images that have been cropped
         """
-        cropped = []
-        for i in range(self.images_list):
+        cropped_set = []
+        for i in range(len(self.images_list)):
             images = self.images_list[i]
             cropped = images[img_idx, ..., upper_left[1]: upper_left[1] + self.y_crop, upper_left[0]: upper_left[0] + self.x_crop]
-        return cropped
+            cropped_set.append(cropped)
+        return cropped_set
 
        
 
@@ -192,7 +196,7 @@ class TrainDataset(SegmentationDataset):
         Returns:
             An int with the total number of crops in the dataset
         """
-        return self.total_crops* len(self.images_input)
+        return self.total_crops * self.num_images
     
     def __getitem__(self, idx):
         """Gets an generic sample from <self.images> dataset and might perform transformations if <self.transform> is True.
@@ -201,7 +205,7 @@ class TrainDataset(SegmentationDataset):
         The next section (i.e. idx==1) is on the same height but shifted to right by one pixel.
 
         Args:
-            idx (int): idx in the range [0, total_crops * len(images_input)] maps to a section of the images.
+            idx (int): idx in the range [0, total_crops * num_images] maps to a section of the images.
 
         Returns:
             Returns a list of cropped images based on the idx and <self.transforms>
@@ -321,7 +325,7 @@ class TestDataset(SegmentationDataset):
     def __len__(self):
         """Returns the number of total possible crops in the dataset
         """
-        return self.total_crops * len(self.images_input)
+        return self.total_crops * self.num_images
     
     def __getitem__(self, idx):
         """Returns a section of an image based on idx.

@@ -21,7 +21,7 @@ def subtract_mean(images):
         An np.array with the same dimensions as <images> where the mean bgr values have been subtracted.
     """
     bgr_mean = BGR_MEAN
-    bgr_mean = np.expand_dims(bgr_mean, axis=(0, 1, 2))
+    bgr_mean = np.expand_dims(bgr_mean, axis=(0, 2, 3))
 
     # Center the BGR values
     images = images - bgr_mean
@@ -31,23 +31,21 @@ def threshold(images, thres=128):
     thresh_images = np.where(images < thres, 0, 1)
     return thresh_images
 
-
-
 def add_encoding(images):
     # get encodings
     num_images = images.shape[0]
-    lin_encoding = positionalencoding2d_linear(IMAGE_SIZE_Y, IMAGE_SIZE_X)
-    # Repeat for the number of images
-    lin_encoding = np.repeat([lin_encoding], num_images, axis=0)
 
+    # Create linear encoding with channels at the second position
+    lin_encoding = positionalencoding2d_linear(IMAGE_SIZE_Y, IMAGE_SIZE_X)
+    lin_encoding = np.repeat([lin_encoding], num_images, axis=0)
+    lin_encoding = np.transpose(lin_encoding, (0, 3, 1, 2))
+
+    # Create sinus encoding with channels at the second position
     sin_encoding = positionalencoding2d_sin(4, IMAGE_SIZE_Y, IMAGE_SIZE_X)
-    # Put Channels at back
-    sin_encoding = np.transpose([sin_encoding], [0, 2, 3, 1])
-    # Repeat for the number of images
-    sin_encoding = np.repeat(sin_encoding, num_images, axis=0)
+    sin_encoding = np.repeat([sin_encoding], num_images, axis=0)
 
     # Add encoding
-    images_with_encoding = np.concatenate([images, lin_encoding, sin_encoding], axis=3)
+    images_with_encoding = np.concatenate([images, lin_encoding, sin_encoding], axis=1)
     return images_with_encoding
 
 def positionalencoding2d_sin(d_model, height, width):
