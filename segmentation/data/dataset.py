@@ -17,7 +17,7 @@ import numpy as np
 
 from torch.utils.data import Dataset
 
-from segmentation.helper import positionalencoding2d_linear, positionalencoding2d_sin
+from ..constants import EXPLAINED_VARIANCE, EXPLAINED_VARIANCE_RATIO, IMAGE_SIZE_X, IMAGE_SIZE_Y, PRINCIPAL_COMPONENTS
 
 
 class SegmentationDataset(Dataset):
@@ -29,37 +29,38 @@ class SegmentationDataset(Dataset):
     num_crops_x, num_crops_y, total_crops are 
 
     Attributes:
-        input_path: The folder which contains the inputs.
-        output_path: The folder which contains the segmentation.
+        paths: List of Paths to the folders with the data
+        images_list: The processed images read from the paths. Elements 
+            should have size (N, C, H, W), 
+                where N is the index of the list
+                C is any number of channels
+                H is the height of the images
+                W is the width
         add_encoding: Bool whether to add positional encoding to the inputs
-        images_input: The processed images that have been read from <input_path> 
-        images_output: The processed segmentation mask that have been read form <output_path>
         crop_size_x: The width of the returned image sections
         crop_size_y: The height of the returned image sections
         num_crops_x: The number of crops in the x direction
         num_crops_y: The number of crops in the y direction
         total_crops: The number of crops possible per image
     """
-    def __init__(self, input_path, output_path, crop_size, add_encoding=True):
+    def __init__(self, paths, crop_size, read_flags=[], preprocess=[]):
         """Initialize the SegmentationDataset. This is called by the children of this class to load images and segmentations.
 
         There should be a one to one correspondence between the names in the folder <input_path> and <output_path>.
         For example if there is a file input_folder/0001.png there should be a corresponding output_folder/0001.png
 
         Args:
-            input_path (str): Path to the folder containing the input_images.
-                Typically this folder contains files in the form of 0001.png.
-            output_path (str): Path to the folder containing the output segmentations.
-                Typically this folder contains files in the form of 0001.png
+            paths (list(str)): List with the paths to the data
+                The file-names in each path sould have a one-to-one correspondence.
+                i.e. for a filename "0001.png" in a path there should be a corresponding "000.1.png" in the other folders
             crop_size (int, tuple[int, int]): The size of the returned image sections should be.
                 If it is <int> height and width of the sections are the same.
                 If it is tuple then the width is the first element and height the second.
-            add_encoding (bool, optional): Whether to add positional encodings to the read input images.
-                Defaults to True.
+            read_flags (int): A list of cv2.imread flags with which to read the files in the corresponding paths.
+            preprocess (list(function), optional): A list of functions that should be applied to each path loading them
+                Defaults to [].
         """
-        self.input_path = input_path
-        self.output_path = output_path
-        self.add_encoding = add_encoding
+        self.paths = paths
 
         # Define the number of crops
         if type(crop_size) is int:
@@ -74,33 +75,17 @@ class SegmentationDataset(Dataset):
         self.num_crops_x = 0
         self.total_crops = 0
 
-        self.images_input = self.read_images(input_path, cv2.IMREAD_COLOR)
-        self.images_output = self.read_images(output_path, cv2.IMREAD_GRAYSCALE)
+        # Read all images with the appropriate flag
+        self.images_list = []
+        for i in self.paths:
+            read_flag = read_flags[i] if len(read_flags) == len(self.paths) else None
+            images_path = self.paths[i]
+            self.images_list.append(self.read_images(images_path, read_flag))
 
-        # Make sure that mask has values 0 and 1
-        self.images_output = np.where(self.images_output < 128, 0, 1)
-
-        #  Prepare for normal segmentation
-        self.images_input = self.subtract_mean(self.images_input)
-
-        if add_encoding:
-            # get encodings
-            num_images = self.images_input.shape[0]
-            lin_encoding = positionalencoding2d_linear(1280, 720)
-            # Repeat for the number of images
-            lin_encoding = np.repeat([lin_encoding], num_images, axis=0)
-
-            sin_encoding = positionalencoding2d_sin(4, 1280, 720)
-            # Put Channels at back
-            sin_encoding = np.transpose([sin_encoding], [0, 2, 3, 1])
-            # Repeat for the number of images
-            sin_encoding = np.repeat(sin_encoding, num_images, axis=0)
-
-            # Add encoding
-            self.images_input = np.concatenate([self.images_input, lin_encoding, sin_encoding], axis=3)
-        
-        # Put channel at second place
-        self.images_input = np.transpose(self.images_input, [0, 3, 1, 2])
+        # Apply preprocessing
+        if len(preprocess) == len(self.paths):
+            for i in range(self.images_list):
+                self.images_list[i] = preprocess[i](self.images_list[i])
 
     def __len__(self):
         """Should be implemented by child calsses
@@ -121,30 +106,20 @@ class SegmentationDataset(Dataset):
                 See the opencv docs for details.
 
         Returns:
-            Returns numpy.ndarray of the shape (n, h, w), where n is the number of read images, h is the height and w is the width.
+            Returns a numpy.ndarray of the shape (n, c, h, w), where n is the number of read images, c is the channels, h is the height and w is the width.
         """
         image_names = os.listdir(path)
         image_names.sort()
+        # Read all the images
         images = [cv2.imread(os.path.join(path, name), flag) for name in image_names]
-        return np.array(images)
+        images = np.array(images)
 
-    def subtract_mean(self, images):
-        """Subtract the mean from the loaded images
+        # Place the channels at the appropriate decision
+        if len(images.shape) == 3:
+            images = np.expand_dims(images, 1)
+        elif len(images.shape) == 4:
+            images = np.transpose(images, [0, 3, 1, 2])
 
-        The mean values that have been provided are from scripts/preprocessing/get_mean_rgb.py. 
-        Execute it and substitute the values here with the values the script generated.
-
-        Args:
-            images (numpy.ndarray): Has the shape (n, h, w), where n is the number of images, h is the height and w is the width.
-
-        Returns:
-            An np.array with the same dimensions as <images> where the mean bgr values have been subtracted.
-        """
-        bgr_mean = [16.10248639, 22.22626978, 27.72004287]
-        bgr_mean = np.expand_dims(bgr_mean, axis=(0, 1, 2))
-
-        # Center the BGR values
-        images = images - bgr_mean
         return images
 
 
@@ -157,45 +132,40 @@ class TrainDataset(SegmentationDataset):
     Use the script in scripts/preprocessing/compute_pca.py to get the right values for your use-case.
 
     Attributes:
-        random_transform: Bool that indicates whether to add random transformations to the output.
+        random_transforms: List that indicates which imagessets to transfroms
         explained_variance: The eigennumbers of the covariance matrix.
         explained_variance_ratio: <explained_variance_ratio> but scaled such that it sums up to one.
         principal_components: The principal components found with PCA.
     """
 
-    def __init__(self, input_path, output_path, crop_size, add_encoding=True, random_transforms=True):
+    def __init__(self, paths, crop_size, preprocess=[], random_transforms=True):
         """Initializes the Traindataset.
 
         Args:
-            input_path (str): See SegmentationDataset
-            output_path (str): See SegmentationDataset
+            paths (list[str]): See SegmentationDataset
             crop_size (int, tuple[int, int]): See SegmentationDataset
-            add_encoding (bool, optional): See SegmentationDataset. Defaults to True.
-            random_transforms (bool, optional): [description]. Defaults to True.
+            preprocess (list[function], optional): See SegmentationDataset. Defaults to True.
+            random_transforms (bool, optional): Bool whether to apply random transformations
+            Defaults to True.
         """
-        super().__init__(input_path, output_path, crop_size, add_encoding)
+        super().__init__(paths, crop_size, preprocess)
 
         self.random_transforms = random_transforms
 
-        self.num_crops_x = 720 - self.x_crop + 1
-        self.num_crops_y = 1280 - self.y_crop + 1
+        self.num_crops_x = IMAGE_SIZE_X - self.x_crop + 1
+        self.num_crops_y = IMAGE_SIZE_Y - self.y_crop + 1
 
         self.total_crops = self.num_crops_x * self.num_crops_y
 
-        if self.random_transforms:
-            # These are the values you get from transforming the rgb pixels into PCA space
-            # I used the script in scripts/preprocessing/compute_pca.py to get them
-            self.explained_variance_ratio = [0.97247924, 0.02025822, 0.00726254]
-            self.explained_variance = [4696.1014082, 97.82694237, 35.07080625]
-            self.principal_compoments = [
-                [ 0.49318574,  0.58025981,  0.64812529],
-                [ 0.73493345,  0.12070754, -0.66730991],
-                [-0.46544673,  0.80543668, -0.3669211 ]
-            ]
+        # These are the values you get from transforming the rgb pixels into PCA space
+        # I used the script in scripts/preprocessing/compute_pca.py to get them
+        self.explained_variance = EXPLAINED_VARIANCE
+        self.explained_variance_ratio = EXPLAINED_VARIANCE_RATIO
+        self.principal_compoments = PRINCIPAL_COMPONENTS
 
-            self.explained_variance = np.array(self.explained_variance)
-            self.explained_variance_ratio = np.array(self.explained_variance_ratio)
-            self.principal_compoments = np.array(self.principal_compoments)
+        self.explained_variance = np.array(self.explained_variance)
+        self.explained_variance_ratio = np.array(self.explained_variance_ratio)
+        self.principal_compoments = np.array(self.principal_compoments)
 
     def __len__(self):
         """Returns the total number of possible crops in the dataset
@@ -206,16 +176,16 @@ class TrainDataset(SegmentationDataset):
         return self.total_crops* len(self.images_input)
     
     def __getitem__(self, idx):
-        """Gets an generic sample (input, output) of the dataset and might perform transformations if <self.transform> is True.
+        """Gets an generic sample from <self.images> dataset and might perform transformations if <self.transform> is True.
 
-        The sections are continously indexed such that the first (idx==0) section in in the upper left corner of the first image
-        in self.input_image. The next section (i.e. idx==1) is on the same height but shifted to right by one pixel.
+        The sections are continously indexed such that the first (idx==0) section in in the upper left corner of an image. 
+        The next section (i.e. idx==1) is on the same height but shifted to right by one pixel.
 
         Args:
             idx (int): idx in the range [0, total_crops * len(images_input)] maps to a section of the images.
 
         Returns:
-            Returns a tuple (input, output) based on the idx and transforms it based on <transform>
+            Returns a list of cropped images based on the idx and <self.transforms>
         """
         if torch.is_tensor(idx):
             idx = idx.tolist()
@@ -228,75 +198,70 @@ class TrainDataset(SegmentationDataset):
         y_value = (idx // self.num_crops_x) % self.num_crops_y
 
         # Crop images
-        cropped_input = self.images_input[img_num, :, y_value: y_value + self.y_crop, x_value: x_value + self.x_crop]
-        cropped_output = self.images_output[img_num, y_value: y_value + self.y_crop, x_value: x_value + self.x_crop]
+        cropped = []
+        for i in range(self.images_list):
+            images = self.images_list[i]
+            cropped = images[img_num, ..., y_value: y_value + self.y_crop, x_value: x_value + self.x_crop]
 
         # Convert to single precision float
-        cropped_input = np.single(cropped_input)
-        cropped_output = np.single(cropped_output)
+        cropped = [np.single(c) for c in cropped]
 
-        # Apply transformations
         if self.random_transforms:
-            cropped_input, cropped_output = self.random_transform(cropped_input, cropped_output)
+            transformed = self.random_transform(cropped)
 
-        return cropped_input, cropped_output
+        return transformed
     
-    def random_transform(self, inputs, outputs):
+    def random_transform(self, image_set):
         """Applies different transformations to an (input, output) tuple.
 
         Args:
-            inputs (numpy.ndarray): An input section calculated by __getitem__.
-            outputs (numpy.ndarray): An output section calculated by __getitem__.
+            images_set (list[numpy.ndarray]): A list of sections calculated by __getitem__.
 
         Returns:
-            The transformed (input, output) tuple
+            The transformed sections
         """
-        inputs, outputs = self.random_flip(inputs, outputs)
-        inputs, outputs = self.random_rotate(inputs, outputs)
-        inputs, outputs = self.random_pertubations(inputs, outputs)
-        inputs, outputs = inputs.copy(), outputs.copy()
-        return inputs, outputs
+        images = self.random_flip(image_set)
+        images = self.random_rotate(images)
+        images = self.random_pertubations(images)
+        images = [i.copy() for i in images]
+        return images
     
-    def random_flip(self, inputs, outputs):
-        """Randomly flips the inputs and outputs
+    def random_flip(self, image_set):
+        """Randomly flips the data along an axis
 
         Args:
-            inputs (numpy.ndarray): Image section found by __getitem__
-            outputs (numpy.ndarray): Image section found by __getitem__
+            image_set (list[numpy.ndarray]): Data sections found by __getitem__
 
         Returns:
-            Returns a randomly flipped version of input and output
+            Returns a randomly flipped version of the inputs
         """
         # flip horizontally
         if np.random.rand() > 0.5:
-            inputs = np.flip(inputs, 1)
-            outputs = np.flip(outputs, 0)
+            image_set  = [np.flip(i, 1) for i in image_set]
         
         # flip vertically
         if np.random.rand() > 0.5:
-            inputs = np.flip(inputs, 2)
-            outputs = np.flip(outputs, 1)
-        return inputs, outputs
+            image_set = [np.flip(i, 2) for i in image_set]
 
-    def random_rotate(self, inputs, outputs):
+        return image_set
+
+    def random_rotate(self, image_set):
         """Randomly rotations the images by 0, 90, 180 or 270 degrees.
 
         For this the section have to have equal height and width.
 
         Args:
-            inputs (numpy.ndarray): Image section found by __getitem__.
-            outputs (numpy.ndarray): Image section found by __getitem__.
-
+            image_set (numpy.ndarray): Image sectios found by __getitem__.
         Returns:
-            A randomly flipped version of inputs and outputs 
+            A randomly flipped version of the images
         """
         k = np.random.randint(4)
-        inputs = np.rot90(inputs, k, axes=(1, 2))
-        outputs = np.rot90(outputs, k, axes=(0, 1))
-        return inputs, outputs
+        image_set = [np.rot90(i, k, axes=(1, 2)) for i in image_set]
+        return image_set
 
-    def random_pertubations(self, inputs, outputs):
-        """Perturbs the pixel value along the vectors of the most explained variance.
+    def random_pertubations(self, image_set):
+        """Perturbs the Images with at least 3 channels (are assumed to be BGR) 
+        value along the vectors of the most explained variance.
 
         Taken from the alexNet paper. Look at the paper for implementation details.
 
@@ -304,18 +269,21 @@ class TrainDataset(SegmentationDataset):
         Look at the class-description on how to find those.
 
         Args:
-            inputs (numpy.ndarray): Image section found by __getitem__.
-            outputs (numpy.ndarray): Image section found by __getitem__.
-
+            image_set (list[numpy.ndarray]): Image sections found by __getitem__.
         Returns:
             A randomly perturbed version of the found sections.
         """
-        samples_a = np.random.normal(size=3)
-        offset = self.explained_variance_ratio * samples_a 
-        pixel_pertubation = self.principal_compoments.transpose().dot(offset)
-        pixel_pertubation = np.expand_dims(pixel_pertubation, axis=(1, 2))
-        inputs[:3] = inputs[:3] + pixel_pertubation
-        return inputs, outputs
+
+        for i in range(len(image_set)):
+            image = image_set[i]
+            if image.shape[0] >= 3:
+                samples_a = np.random.normal(size=3)
+                offset = EXPLAINED_VARIANCE_RATIO * samples_a 
+                pixel_pertubation = np.array(PRINCIPAL_COMPONENTS).transpose().dot(offset)
+                pixel_pertubation = np.expand_dims(pixel_pertubation, axis=(1, 2))
+                image[:3] = image[:3] + pixel_pertubation
+            image_set[i] = image
+        return image_set
 
 class TestDataset(SegmentationDataset):
     """Implements SegmenationDataset where the outputs are non-overlapping sections of the original images.
@@ -333,8 +301,8 @@ class TestDataset(SegmentationDataset):
         """
         super().__init__(input_path, output_path, crop_size, add_encoding=add_encoding)
 
-        self.num_crops_x = 720 // self.x_crop
-        self.num_crops_y = 1280 // self.y_crop
+        self.num_crops_x = IMAGE_SIZE_X // self.x_crop
+        self.num_crops_y = IMAGE_SIZE_Y // self.y_crop
 
         self.total_crops = self.num_crops_x * self.num_crops_y
     
