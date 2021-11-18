@@ -4,13 +4,13 @@ This repository is for my application of the "Few-Shot-Based-Training" style tra
 As I wanted to create some rather complex video with it i needed to do segmentation. The biggest part of this repository is the segmentation part, where I use different models 
 to segment the video in different parts. This segmentation masks are later used to train the style transfer on different parts of the video. And then also used to overlay all the parts of the model.
 
-## Requirments
+## Requirements
 
 I used the requirements from the "Few-Shots-Based-Training" video. For any additional pyhton libraries I created I requirements.txt.
 
 As this repo trains (rather simple) Neural Networks you need access to a graphics card. 
 
-The `segmentation`folder contains the python library that I used to execute the scrips. Install them with `pip install -e .`
+The `segmentation` folder contains the python library that I used to execute the scrips. Install them with `pip install -e .`
 
 ## Workflow
 
@@ -94,6 +94,10 @@ TODO: creating masks
 ##### GrabCut
 
 GrabCut is an algorithm for segmentation, you give it a rough estimate of your segmentation and it executes a finer segmentation based on the pixel-values in your frame. This script is fine-tuned for my spefic video. You probably have to change the different parameters for it to work with a different video.
+
+#### UNet and CNN
+
+TODO
 
 ####  Use ensemble learning to aggregate the different masks
 
