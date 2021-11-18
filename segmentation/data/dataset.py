@@ -150,16 +150,12 @@ class SegmentationDataset(Dataset):
 class TrainDataset(SegmentationDataset):
     """Implements SegmenationDataset where the outputs are overlapping sections of the original images.
 
-    The Image size is assumed to be (720x1280). Change this number accordingly to your use case.
-
     This class performs pertubations based on the principal components of the image-dataset.
-    Use the script in scripts/preprocessing/compute_pca.py to get the right values for your use-case.
+    Use the script in scripts/preprocessing/compute_pca.py to get the right values for your use-case
+    and replace the ones in constants.py
 
     Attributes:
         random_transforms: List that indicates which imagessets to transfroms
-        explained_variance: The eigennumbers of the covariance matrix.
-        explained_variance_ratio: <explained_variance_ratio> but scaled such that it sums up to one.
-        principal_components: The principal components found with PCA.
     """
 
     def __init__(self, paths, crop_size, read_flags=[], preprocess=[], random_transforms=True):
@@ -169,7 +165,7 @@ class TrainDataset(SegmentationDataset):
             paths (list[str]): See SegmentationDataset
             crop_size (int, tuple[int, int]): See SegmentationDataset
             read_flags (list[int]): See SegmentationDataset
-            preprocess (list[function], optional): See SegmentationDataset. Defaults to True.
+            preprocess (list[function], optional): See SegmentationDataset. Defaults to [].
             random_transforms (bool, optional): Bool whether to apply random transformations
             Defaults to True.
         """
