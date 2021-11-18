@@ -1,4 +1,5 @@
-from torch.nn.functional import interpolate
+import cv2
+from torch.nn.functional import interpolate, threshold
 from torch.nn.modules.loss import BCELoss
 
 from segmentation.data.dataset import TestDataset, TrainDataset 
@@ -12,6 +13,8 @@ import torch
 import torch.optim as optim
 
 import os
+
+import segmentation.helper.preprocessing as preprocessing
 
 
 def crop_or_scale(predictions, targets, transform="scale"):
@@ -84,19 +87,42 @@ def create_train(create_model, crop_size, add_encoding, use_tune=True, transform
         criterion = BCELoss()
         optimizer = optim.Adam(net.parameters(), lr=learning_rate)
 
-        # Train 
+        # Generate the preprocessing function for the input
+        input_preprocess = [preprocessing.add_encoding] if add_encoding else []
+        input_preprocess.append(preprocessing.subtract_mean)
+
         train_set = TrainDataset(
-            "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/train_input",
-            "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/train_output",
+            [
+                "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/train_input",
+                "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/train_output",
+            ],
             crop_size,
-            add_encoding
+            read_flags=[
+                cv2.IMREAD_COLOR,
+                cv2.IMREAD_GRAYSCALE
+            ],
+            preprocess=[
+                # Preprocess train_input with added encoding and and 
+                preprocessing.compose(input_preprocess),
+                preprocessing.threshold
+            ],
+            random_transforms=True
         )
 
         valid_set = TestDataset(
-            "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/valid_input",
-            "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/valid_output",
+            [
+                "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/valid_input",
+                "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/valid_output"
+            ],
             crop_size,
-            add_encoding
+            read_flags=[
+                cv2.IMREAD_COLOR,
+                cv2.IMREAD_GRAYSCALE
+            ],
+            preprocess=[
+                preprocessing.compose(preprocess),
+                preprocessing.threshold
+            ]
         )
 
         train_loader = DataLoader(train_set, batch_size, shuffle=True, num_workers=8)
@@ -223,12 +249,24 @@ def create_test_best(create_model, crop_size, add_encoding, transform=None):
         model_state, _ = torch.load(ck_path)
         net.load_state_dict(model_state)
 
-        # Get Dataloader
+        # Create Dataset
+        input_preprocess = [preprocessing.add_encoding] if add_encoding else []
+        input_preprocess.append(preprocessing.subtract_mean)
+
         valid_set = TestDataset(
-            "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/test_input",
-            "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/test_output",
+            [
+                "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/test_input",
+                "/home/martin/Videos/ondrej_et_al/bf/segmentation/cnn/test_output",
+            ],
             crop_size,
-            add_encoding
+            read_flags=[
+                cv2.IMREAD_COLOR,
+                cv2.IMREAD_GRAYSCALE
+            ],
+            preprocess=[
+                preprocessing.compose(input_preprocess),
+                preprocessing.threshold
+            ]
         )
 
         valid_loader = DataLoader(valid_set, batch_size=1)

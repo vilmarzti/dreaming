@@ -36,7 +36,7 @@ class SegmentationDataset(Dataset):
                 C is any number of channels
                 H is the height of the images
                 W is the width
-        add_encoding: Bool whether to add positional encoding to the inputs
+        preprocess: List of (composed) functions that are applied after reading a set
         crop_size_x: The width of the returned image sections
         crop_size_y: The height of the returned image sections
         num_crops_x: The number of crops in the x direction
@@ -56,11 +56,12 @@ class SegmentationDataset(Dataset):
             crop_size (int, tuple[int, int]): The size of the returned image sections should be.
                 If it is <int> height and width of the sections are the same.
                 If it is tuple then the width is the first element and height the second.
-            read_flags (int): A list of cv2.imread flags with which to read the files in the corresponding paths.
+            read_flags (list[int]): A list of cv2.imread flags with which to read the files in the corresponding paths.
             preprocess (list(function), optional): A list of functions that should be applied to each path loading them
                 Defaults to [].
         """
         self.paths = paths
+        self.preprocess = preprocess
 
         # Define the number of crops
         if type(crop_size) is int:
@@ -155,17 +156,18 @@ class TrainDataset(SegmentationDataset):
         principal_components: The principal components found with PCA.
     """
 
-    def __init__(self, paths, crop_size, preprocess=[], random_transforms=True):
+    def __init__(self, paths, crop_size, read_flags=[], preprocess=[], random_transforms=True):
         """Initializes the Traindataset.
 
         Args:
             paths (list[str]): See SegmentationDataset
             crop_size (int, tuple[int, int]): See SegmentationDataset
+            read_flags (list[int]): See SegmentationDataset
             preprocess (list[function], optional): See SegmentationDataset. Defaults to True.
             random_transforms (bool, optional): Bool whether to apply random transformations
             Defaults to True.
         """
-        super().__init__(paths, crop_size, preprocess)
+        super().__init__(paths, crop_size, read_flags, preprocess)
 
         self.random_transforms = random_transforms
 
@@ -304,16 +306,12 @@ class TestDataset(SegmentationDataset):
 
     The Image size is assumed to be (720x1280). Change this number accordingly to your use case.
     """
-    def __init__(self, input_path, output_path, crop_size, add_encoding=True):
+    def __init__(self, paths, crop_size, read_flags=[], preprocess=[]):
         """Initializes the TestDataset by calling its parent class and setting the appropriate number of crops
 
         Args:
-            input_path (str): See SegmentationDataset
-            output_path (str): See SegmentationDataset
-            crop_size (int, tuple[int, int]): See SegmentationDataset
-            add_encoding (bool, optional): See SegmentationDataset. Defaults to True.
         """
-        super().__init__(input_path, output_path, crop_size, add_encoding=add_encoding)
+        super().__init__(paths, crop_size, read_flags, preprocess)
 
         self.num_crops_x = IMAGE_SIZE_X // self.x_crop
         self.num_crops_y = IMAGE_SIZE_Y // self.y_crop
