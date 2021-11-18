@@ -1,20 +1,18 @@
 import cv2
-from torch.nn.functional import interpolate, threshold
-from torch.nn.modules.loss import BCELoss
-
-from segmentation.data.dataset import TestDataset, TrainDataset 
-from segmentation.helper.metrics import jaccard_index
-
-from torch.utils.data import DataLoader
-
-from ray import tune
+import os
 
 import torch
 import torch.optim as optim
 
-import os
+from ray import tune
 
-import segmentation.helper.preprocessing as preprocessing
+from torch.nn.functional import interpolate 
+from torch.nn.modules.loss import BCELoss
+from torch.utils.data import DataLoader
+
+from segmentation.helper import preprocessing
+from segmentation.data.dataset import TestDataset, TrainDataset 
+from segmentation.helper.metrics import jaccard_index
 
 
 def crop_or_scale(predictions, targets, transform="scale"):

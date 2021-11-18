@@ -1,11 +1,11 @@
 import torch
-
 import torch.nn as nn
 import torch.nn.functional as F
 
+import numpy as np
+
 from segmentation.models.thin_conv import ThinConv2d
 
-import numpy as np
 
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels, use_thin=False):
