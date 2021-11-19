@@ -29,7 +29,6 @@ def pad_reflect(images, pad_size):
     padded = np.pad(images, ((0, 0), (0, 0), (0, pad_bot), (0, pad_right)), mode="reflect")
     return padded
 
-
 def subtract_mean(images):
     """Subtract the mean some images
 

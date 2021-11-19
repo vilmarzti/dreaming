@@ -1,5 +1,6 @@
 import torch
 
+
 def jaccard_index(pred_labels, target_labels, device="cpu"):
     """Computes the jaccard index given prediction and target labels.
 

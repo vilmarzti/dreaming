@@ -1,16 +1,9 @@
+from segmentation.helper.create_model import create_cnn
 from segmentation.evaluation.generate import generate_segmentations
 
-from ray.tune import Analysis
 from ray.tune.analysis.experiment_analysis import Analysis
 
-from segmentation.helper.create_model import create_cnn
-
-experiment_path = "/home/martin/Documents/code/python/dreaming/data/raytune/cnn"
-input_path = "/home/martin/Videos/ondrej_et_al/bf/bf_gen/input_filtered"
-output_path = "/home/martin/Documents/code/python/dreaming/data/masks"
-transform ="scale"
-
-if __name__ == "__main__":
+def main(experiment_path, input_path, output_path):
     analysis = Analysis(experiment_path)
 
     # Get best trial. There's probably a quicker way to do this
@@ -36,4 +29,11 @@ if __name__ == "__main__":
         best_cp_path,
         (720, 1280),
         252
+    )
+
+if __name__ == "__main__":
+    main(
+        "/home/martin/Documents/code/python/dreaming/data/raytune/cnn",
+        "/home/martin/Videos/ondrej_et_al/bf/bf_gen/input_filtered",
+        "/home/martin/Documents/code/python/dreaming/data/masks",
     )
