@@ -31,16 +31,14 @@ def main(experiment_path, input_path, output_path):
     checkpoint = torch.load(path.join(best_cp_path, "checkpoint"))
     model.load_state_dict(checkpoint[0])
 
-    pad_x = 1072
-    pad_y = 1731
+    pad_x = 812
+    pad_y = 1372
 
     generate_segmentations(
         input_path,
         output_path,
         model,
-        252,
         (pad_x, pad_y),
-        164
     )
 
 if __name__ == "__main__":

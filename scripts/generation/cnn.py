@@ -39,8 +39,6 @@ def main(experiment_path, input_path, output_path):
         input_path,
         output_path,
         model,
-        252,
-        (pad_x, pad_y)
     )
 
 if __name__ == "__main__":
