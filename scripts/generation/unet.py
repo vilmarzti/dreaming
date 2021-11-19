@@ -3,7 +3,7 @@ import torch
 
 from os import path
 
-from segmentation.helper.create_model import create_cnn
+from segmentation.helper.create_model import create_unet
 from segmentation.evaluation.generate import generate_segmentations
 
 from ray.tune.analysis.experiment_analysis import Analysis
@@ -27,25 +27,25 @@ def main(experiment_path, input_path, output_path):
     best_cp_path = analysis.get_trial_checkpoints_paths(best_trial)[-1][0]
 
     # Load model from checkpoint
-    model = create_cnn(best_config)
+    model = create_unet(best_config)
     checkpoint = torch.load(path.join(best_cp_path, "checkpoint"))
     model.load_state_dict(checkpoint[0])
 
-    pad_x = math.ceil(720 / 252) * 252
-    pad_y = math.ceil(1280 / 252) * 252
-
+    pad_x = 1072
+    pad_y = 1731
 
     generate_segmentations(
         input_path,
         output_path,
         model,
         252,
-        (pad_x, pad_y)
+        (pad_x, pad_y),
+        164
     )
 
 if __name__ == "__main__":
     main(
-        "/home/martin/Documents/code/python/dreaming/data/raytune/cnn",
+        "/home/martin/Documents/code/python/dreaming/data/raytune/unet_run1",
         "/home/martin/Videos/ondrej_et_al/bf/bf_gen/input_filtered",
         "/home/martin/Documents/code/python/dreaming/data/masks",
     )

@@ -7,6 +7,7 @@ from ray.tune.stopper import TrialPlateauStopper
 from segmentation.training import create_test_best, create_train
 from segmentation.helper import create_unet
 
+
 def trial_str_creator(trial):
     return f"trial_{trial.trial_id}"
 
@@ -67,10 +68,8 @@ def main(num_samples, max_num_epochs=20, gpus_per_trial=0.5):
     best_trial = result.get_best_trial("val_accuracy", "max", "last")
 
     print("Best trial config: {}".format(best_trial.config))
-    print("Best trial final validation loss: {}".format(
-        best_trial.last_result["val_loss"]))
-    print("Best trial final validation accuracy: {}".format(
-        best_trial.last_result["val_accuracy"]))
+    print("Best trial final validation loss: {}".format(best_trial.last_result["val_loss"]))
+    print("Best trial final validation accuracy: {}".format(best_trial.last_result["val_accuracy"]))
     
     test_best_model(best_trial)
 

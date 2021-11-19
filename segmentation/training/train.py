@@ -22,8 +22,8 @@ def crop_or_scale(predictions, targets, transform="scale"):
     Args:
         predictions (torch.tensor): The predictions of size (B, C, H, W) 
             Where B is the number of Batches, C the number of Channels, H is height and W is width
-        targets (torch.tensor):  The targets of size (B, H, W)
-            Where B is the batch-size, H the height and W is the width
+        targets (torch.tensor):  The targets of size (B, C, H, W)
+            Where B is the batch-size, C is the number of channels, H the height and W is the width
         transform (str, optional): Should be one of ["scale", "crop"]. If None is provided raises an error. Defaults to "scale".
 
     Raises:
@@ -32,13 +32,13 @@ def crop_or_scale(predictions, targets, transform="scale"):
     Returns:
         [(torch.Tensor, torch.Tensor)]: A dict of the transformed predictions and targets
     """
-    if predictions.shape[1] != targets.shape[1] or predictions.shape[2] != targets.shape[2]:
+    if predictions.shape[2] != targets.shape[2] or predictions.shape[3] != targets.shape[3]:
         if transform == "scale":
-            predictions = interpolate(predictions, (targets.shape[1], targets.shape[2]), mode="bilinear", align_corners=False)
+            predictions = interpolate(predictions, (targets.shape[2], targets.shape[3]), mode="bilinear", align_corners=False)
         elif transform == "crop":
-            diff_y = (targets.shape[1] - predictions.shape[1]) // 2
-            diff_x = (targets.shape[2] - predictions.shape[2]) // 2
-            targets = targets[:, diff_y: diff_y + predictions.shape[1], diff_x: diff_x + predictions.shape[2]]
+            diff_y = (targets.shape[2] - predictions.shape[2]) // 2
+            diff_x = (targets.shape[3] - predictions.shape[3]) // 2
+            targets = targets[:, :, diff_y: diff_y + predictions.shape[1], diff_x: diff_x + predictions.shape[2]]
         else:
             raise ValueError(f"predictions of the Model has not the same shape as target.\nOutput shape{predictions.shape} Target shape: {targets.shape}\nPlease provide the right transform argument in the training function")
     return predictions, targets 

@@ -24,9 +24,9 @@ def pad_reflect(images, pad_size):
     Returns:
         A numpy array with the shape (n, c, pad_y, pad_x)
     """
-    pad_right = pad_size[0] - images.shape[3]
-    pad_bot = pad_size[1] - images.shape[2]
-    padded = np.pad(images, ((0, 0), (0, 0), (0, pad_bot), (0, pad_right)), mode="reflect")
+    pad_horizontal = (pad_size[0] - images.shape[3]) // 2
+    pad_vertical = (pad_size[1] - images.shape[2]) // 2
+    padded = np.pad(images, ((0, 0), (0, 0), (pad_vertical, pad_vertical), (pad_horizontal, pad_horizontal)), mode="reflect")
     return padded
 
 def subtract_mean(images):
@@ -72,8 +72,8 @@ def add_encoding(images):
     """
     # get encodings
     num_images = images.shape[0]
-    image_size_x = images.shape[2]
-    image_size_y = images.shape[1]
+    image_size_x = images.shape[3]
+    image_size_y = images.shape[2]
 
     # Create linear encoding with channels at the second position
     lin_encoding = positionalencoding2d_linear(image_size_x, image_size_y)

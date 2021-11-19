@@ -10,27 +10,21 @@ from torch.nn.modules.loss import BCELoss
 
 from segmentation.training.train import create_train
 
-net = UNet(3, 2, 9, False, "sin")
+net = UNet(3, 3, 9, False, "sin")
 
 net = net.to("cuda")
 
-"""
 difference = {}
 min_difference = 300
 min_size = 0
 for size in range(250, 400):
     input = torch.zeros((16, 9, size, size), device="cuda")
     output = net(input)
-    diff = size - output.shape[2]
-    if diff < min_difference:
-        print(output.shape)
-        min_difference = diff
-        min_size = size
+    if size == 252:
+        break
+print(output.shape)
 
-print(min_size, min_difference)
 """
-
-
 config = {
     "deepness": 2,
     "starting_multiplier": 3,
@@ -50,3 +44,5 @@ train_func = create_train(
 )
 
 train_func(config)
+
+"""
