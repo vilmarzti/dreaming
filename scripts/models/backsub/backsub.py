@@ -31,6 +31,8 @@ def noise_removal_parallel(foreground_mask, threshold=3):
     # Apply noise removal to each of split
     pool = mp.Pool(8)
     new_masks = pool.starmap(noise_removal, zip(split_images, repeat(threshold)))
+    pool.close()
+    pool.join()
 
     # put it all together
     new_mask = np.zeros_like(foreground_mask)
@@ -164,7 +166,6 @@ def process_folder(input_path, reference_mask_path, output_path):
 
     # Set-up paths for reading and writing
     image_paths = [path.join(input_path, x) for x in images]
-    mask_paths = list(map(lambda x: str(path.join(output_path, x)), images))
 
     # create slices with reference mask as start and end 
     # with the position before the next reference mask as the end
@@ -181,22 +182,27 @@ def process_folder(input_path, reference_mask_path, output_path):
     end_indices = start_indices[1:]
     end_indices.append(len(images))
 
-    # Go through each segment that starts with a reference mask 
-    # and ends before the next reference mask
-    masks = []
-    for i, (start, end, r_mask) in enumerate(zip(start_indices, end_indices, found_references)):
-        r_path = path.join(reference_mask_path, r_mask)
-        images_segment = image_paths[start: end]
-        print(f"Starting with segment {i + 1} of {len(start_indices)}")
-        masks.extend(background_substract(images_segment, r_path))
+    # Start with the next image
+    start_indices[1:] = np.array(start_indices)[1:] + 1
 
-    # Create output folder if does not exists
+     # Create output folder if does not exists
     if not os.path.isdir(output_path):
         os.mkdir(output_path)
     
-    # Write computed masks
-    for p, m in zip(mask_paths, masks):
-        cv2.imwrite(p, m)
+    # Go through each segment that starts with a reference mask 
+    # and ends before the next reference mask
+    for i, (start, end, r_mask) in enumerate(zip(start_indices, end_indices, found_references)):
+        print(f"Starting with segment {i + 1} ({start}:{end}) of {len(start_indices)}")
+
+        r_path = path.join(reference_mask_path, r_mask)
+        images_segment = image_paths[start: end]
+        masks = background_substract(images_segment, r_path)
+
+        # save calculated masks
+        for i, image_name in enumerate(images_segment):
+            mask_path = path.join(output_path, path.basename(image_name))
+            cv2.imwrite(mask_path, masks[i])
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="""

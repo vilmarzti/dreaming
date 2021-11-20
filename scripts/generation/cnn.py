@@ -31,10 +31,7 @@ def main(experiment_path, input_path, output_path):
     checkpoint = torch.load(path.join(best_cp_path, "checkpoint"))
     model.load_state_dict(checkpoint[0])
 
-    pad_x = math.ceil(720 / 252) * 252
-    pad_y = math.ceil(1280 / 252) * 252
-
-
+    # Generate segmentations
     generate_segmentations(
         input_path,
         output_path,
@@ -45,5 +42,5 @@ if __name__ == "__main__":
     main(
         "/home/martin/Documents/code/python/dreaming/data/raytune/cnn",
         "/home/martin/Videos/ondrej_et_al/bf/bf_gen/input_filtered",
-        "/home/martin/Documents/code/python/dreaming/data/masks",
+        "/home/martin/Documents/code/python/dreaming/data/masks_cnn",
     )

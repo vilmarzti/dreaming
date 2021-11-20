@@ -8,7 +8,7 @@ from os import path
 
 from ..helper import preprocessing
 
-def generate_segmentations(input_path, output_path, model, pad_to=None):
+def generate_segmentations(input_path, output_path, model, pad_to=None, save_png=False):
     # Check if cuda is available
     device="cuda:0" if torch.cuda.is_available else "cpu"
 
@@ -50,18 +50,19 @@ def generate_segmentations(input_path, output_path, model, pad_to=None):
             segmentation = model(image_tensor).detach().cpu().numpy()
 
         # Find out how much space is padded to left and right
-        if pad_to is not None:
-            pad_left = (pad_to[0] - original_image.shape[1]) // 2
-            pad_top = (pad_to[1] - original_image.shape[0]) // 2
-        else:
-            pad_left = 0
-            pad_top = 0
+        pad_left = (segmentation.shape[3] - original_image.shape[1]) // 2
+        pad_top = (segmentation.shape[2] - original_image.shape[0]) // 2
 
         segmentation = segmentation[0, 0, pad_top: pad_top + original_image.shape[0], pad_left : pad_left + original_image.shape[1]]
-        cv2.imshow("Segmentation", segmentation)
-        cv2.imshow("Original", original_image)
-        cv2.waitKey(20)
+
+        # For debugging purposes
+        #cv2.imshow("Segmentation", segmentation)
+        #cv2.imshow("Original", original_image)
+        #cv2.waitKey(20)
 
         # prepare for saving
-        segmentation = np.array(segmentation * 255, np.uint8)
-        #cv2.imwrite(path.join(output_path, i_name), segmentation)
+        if save_png:
+            segmentation = np.array(segmentation * 255, np.uint8)
+            cv2.imwrite(path.join(output_path, i_name), segmentation)
+        else:
+            np.save(path.join(output_path, i_name.replace(".png", ".npy")), segmentation)

@@ -45,5 +45,5 @@ if __name__ == "__main__":
     main(
         "/home/martin/Documents/code/python/dreaming/data/raytune/unet_run1",
         "/home/martin/Videos/ondrej_et_al/bf/bf_gen/input_filtered",
-        "/home/martin/Documents/code/python/dreaming/data/masks",
+        "/home/martin/Documents/code/python/dreaming/data/masks_unet",
     )
