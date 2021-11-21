@@ -37,7 +37,7 @@ def crop_or_scale(predictions, targets, transform="scale"):
         elif transform == "crop":
             diff_y = (targets.shape[2] - predictions.shape[2]) // 2
             diff_x = (targets.shape[3] - predictions.shape[3]) // 2
-            targets = targets[:, :, diff_y: diff_y + predictions.shape[1], diff_x: diff_x + predictions.shape[2]]
+            targets = targets[:, :, diff_y: diff_y + predictions.shape[2], diff_x: diff_x + predictions.shape[3]]
         else:
             raise ValueError(f"predictions of the Model has not the same shape as target.\nOutput shape{predictions.shape} Target shape: {targets.shape}\nPlease provide the right transform argument in the training function")
     return predictions, targets 

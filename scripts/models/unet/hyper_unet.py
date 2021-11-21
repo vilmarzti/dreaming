@@ -63,6 +63,7 @@ def main(num_samples, max_num_epochs=20, gpus_per_trial=0.5):
     )
 
     config = {
+        "input_channels": tune.choice([3]),
         "deepness": tune.randint(2, 4),
         "starting_multiplier": tune.randint(3, 8),
         "use_thin": tune.choice([True, False]),
