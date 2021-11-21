@@ -214,8 +214,8 @@ def create_test_best(create_model, crop_size, add_encoding, transform=None):
         net.load_state_dict(model_state)
 
         # Create Dataset
-        input_preprocess = [preprocessing.add_encoding] if add_encoding else []
-        input_preprocess.append(preprocessing.subtract_mean)
+        input_preprocess = [transform.add_encoding] if add_encoding else []
+        input_preprocess.append(transform.subtract_mean)
 
         valid_set = TestDataset(
             [
@@ -228,8 +228,8 @@ def create_test_best(create_model, crop_size, add_encoding, transform=None):
                 cv2.IMREAD_GRAYSCALE
             ],
             preprocess=[
-                preprocessing.compose(input_preprocess),
-                preprocessing.threshold
+                transform.compose(input_preprocess),
+                transform.threshold
             ]
         )
 

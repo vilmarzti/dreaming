@@ -1,8 +1,7 @@
 import cv2
 
 from segmentation.data.dataset import TestDataset, TrainDataset
-from segmentation.helper import transforms, create_ensemble
-from segmentation.helper.create_model import create_unet
+from segmentation.helper import transforms, create_cnn
 from segmentation.training import create_train
 
 from ray import tune
@@ -76,16 +75,17 @@ def main():
     )
 
     train = create_train(
-        create_unet,
+        create_cnn,
         transform="scale",
     )
-
     config = {
         "input_channels": tune.choice([5]),
-        "deepness": tune.randint(2, 4),
-        "starting_multiplier": tune.randint(3, 8),
-        "use_thin": tune.choice([True, False]),
+        "kernel_size": tune.randint(3, 10),
+        "intermidiate_channels": tune.randint(1, 5),
+        "num_layers": tune.randint(2, 6),
+        "thin": tune.choice([True, False]),
         "positional_encoding": tune.choice([None]),
+        "padding": tune.choice(["reflection", "zero", "replication", None]),
         "learning_rate": tune.loguniform(1e-4, 1e-1),
         "batch_size": tune.choice([8, 16, 32])
     }

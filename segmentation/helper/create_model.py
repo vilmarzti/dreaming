@@ -4,7 +4,7 @@ from segmentation.models.ensemble import Ensemble
 
 def create_cnn(config):
     # CNN params
-    input_channels = 3
+    input_channels = config["input_channels"]
     kernel_size = config["kernel_size"]
     intermidiate_channels = config["intermidiate_channels"]
     num_layers = config["num_layers"]
@@ -37,5 +37,5 @@ def create_ensemble(config):
     input_channels = config["input_channels"]
     kernel_size = config["kernel_size"]
 
-    ensemble = Ensemble(num_channels, kernel_size)
+    ensemble = Ensemble(input_channels, kernel_size)
     return ensemble

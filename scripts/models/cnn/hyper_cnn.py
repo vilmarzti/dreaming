@@ -60,8 +60,6 @@ def main(num_samples, max_num_epochs=30, gpus_per_trial=0.5):
 
     train = create_train(
         create_cnn,
-        train_set,
-        test_set,
         transform="scale",
     )
 
@@ -72,8 +70,8 @@ def main(num_samples, max_num_epochs=30, gpus_per_trial=0.5):
         transform="scale"
     )
 
-
     config = {
+        "input_channels": tune.choice([3]),
         "kernel_size": tune.randint(3, 10),
         "intermidiate_channels": tune.randint(1, 5),
         "num_layers": tune.randint(2, 6),
@@ -102,7 +100,7 @@ def main(num_samples, max_num_epochs=30, gpus_per_trial=0.5):
     )
 
     result = tune.run(
-        tune.with_parameters(train),
+        tune.with_parameters(train, train_set=train_set, test_set=test_set),
         resources_per_trial={"cpu": 8, "gpu": 1},
         config=config,
         num_samples=num_samples,
