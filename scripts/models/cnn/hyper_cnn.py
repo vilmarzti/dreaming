@@ -1,16 +1,71 @@
+import cv2
 from ray import tune
 from ray.tune.schedulers import  HyperBandScheduler 
 from ray.tune.suggest.hyperopt import HyperOptSearch
 from ray.tune.stopper import TrialPlateauStopper
+from segmentation.data.dataset import TestDataset, TrainDataset
 
 from segmentation.training import create_test_best, create_train
-from segmentation.helper import create_cnn
+from segmentation.helper import create_cnn, preprocessing
 
 
 def trial_str_creator(trial):
     return f"trial_{trial.trial_id}"
 
 def main(num_samples, max_num_epochs=30, gpus_per_trial=0.5):
+    train_paths= [
+        "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/train_input",
+        "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/train_output",
+    ],
+
+    test_paths = [
+        "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/valid_input",
+        "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/valid_output"
+    ]
+
+    read_flags = [
+        cv2.IMREAD_COLOR,
+        cv2.IMREAD_GRAYSCALE
+    ]
+
+    preprocess = [
+        preprocessing.compose(*[preprocessing.add_encoding, preprocessing.subtract_mean]),
+        preprocessing.threshold
+    ],
+
+    crop_size = 300
+
+    train_set = TrainDataset(
+        train_paths,
+        crop_size,
+        read_flags=read_flags,
+        preprocess=preprocess,
+        random_transforms=True
+    )
+
+    test_set = TestDataset(
+        test_paths,
+        crop_size,
+        read_flags=read_flags,
+        preprocess=preprocess,
+    )
+
+
+    train = create_train(
+        create_cnn,
+        train_set,
+        test_set,
+        transform="scale",
+    )
+
+    test_best_model = create_test_best(
+        create_cnn,
+        5,
+        True,
+        transform="scale"
+    )
+
+
     config = {
         "kernel_size": tune.randint(3, 10),
         "intermidiate_channels": tune.randint(1, 5),
@@ -37,20 +92,6 @@ def main(num_samples, max_num_epochs=30, gpus_per_trial=0.5):
     stopper = TrialPlateauStopper(
         metric="val_j_index",
         std=0.006
-    )
-
-    train = create_train(
-        create_cnn,
-        300,
-        True,
-        transform="scale"
-    )
-
-    test_best_model = create_test_best(
-        create_cnn,
-        5,
-        True,
-        transform="scale"
     )
 
     result = tune.run(

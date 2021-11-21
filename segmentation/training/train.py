@@ -43,14 +43,14 @@ def crop_or_scale(predictions, targets, transform="scale"):
             raise ValueError(f"predictions of the Model has not the same shape as target.\nOutput shape{predictions.shape} Target shape: {targets.shape}\nPlease provide the right transform argument in the training function")
     return predictions, targets 
 
-def create_train(create_model, crop_size, add_encoding, use_tune=True, transform=None):
+def create_train(create_model, train_set, test_set, use_tune=True, transform=None):
     """ Creates a train function that can be called from ray.tune or started with a costum config.
 
     Args:
         create_model (function): A function that takes in a config-dict and generates a  corresponding model.
-            For example create_cnn creates a cnn from a given config. Check out segmentation.helper.create_models for available methods
-        crop_size (int or tuple of ints): Tells the train- and validationdataset how much to crop the samples.
-        add_encoding (bool): Add positional encoding to the datasets if true. If not no positional encoding is provided
+            For example create_cnn creates a cnn from a given config. Check out segmentation.helper.create_models for available methods.
+        train_set (TrainDataset): A dataset with the train data
+        test_set (TestDataset): A dataset with the test data.
         use_tune (bool, optional): Whether to use tune during execution of the returned train function. 
             Set this to False when executing training without tune. Defaults to True.
         transform (str, optional): How to transform the output of the model or the labels if their sizes mismatch. 
@@ -85,46 +85,8 @@ def create_train(create_model, crop_size, add_encoding, use_tune=True, transform
         criterion = BCELoss()
         optimizer = optim.Adam(net.parameters(), lr=learning_rate)
 
-        # Generate the preprocessing function for the input
-        input_preprocess = [preprocessing.add_encoding] if add_encoding else []
-        input_preprocess.append(preprocessing.subtract_mean)
-
-        train_set = TrainDataset(
-            [
-                "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/train_input",
-                "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/train_output",
-            ],
-            crop_size,
-            read_flags=[
-                cv2.IMREAD_COLOR,
-                cv2.IMREAD_GRAYSCALE
-            ],
-            preprocess=[
-                # Preprocess train_input with added encoding and and 
-                preprocessing.compose(*input_preprocess),
-                preprocessing.threshold
-            ],
-            random_transforms=True
-        )
-
-        valid_set = TestDataset(
-            [
-                "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/valid_input",
-                "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/valid_output"
-            ],
-            crop_size,
-            read_flags=[
-                cv2.IMREAD_COLOR,
-                cv2.IMREAD_GRAYSCALE
-            ],
-            preprocess=[
-                preprocessing.compose(*input_preprocess),
-                preprocessing.threshold
-            ]
-        )
-
         train_loader = DataLoader(train_set, batch_size, shuffle=True, num_workers=8)
-        valid_loader = DataLoader(valid_set, 1)
+        test_loader = DataLoader(test_set, 1)
 
         if checkpoint_dir:
             checkpoint = os.path.join(checkpoint_dir, "checkpoint")
@@ -169,7 +131,7 @@ def create_train(create_model, crop_size, add_encoding, use_tune=True, transform
             val_j_index = 0
             net.eval()
             # Validation loop
-            for i, (inputs, labels) in enumerate(valid_loader):
+            for i, (inputs, labels) in enumerate(test_loader):
                 with torch.no_grad():
                     inputs = inputs.to(device)
                     labels = labels.to(device)
@@ -197,9 +159,9 @@ def create_train(create_model, crop_size, add_encoding, use_tune=True, transform
                     val_accuracy += accuracy.item()
 
             mean_train_loss = running_loss / max_steps_train
-            mean_val_loss = val_losses / len(valid_loader)
-            mean_val_acc = val_accuracy / len(valid_loader)
-            mean_val_j = val_j_index / len(valid_loader)
+            mean_val_loss = val_losses / len(test_loader)
+            mean_val_acc = val_accuracy / len(test_loader)
+            mean_val_j = val_j_index / len(test_loader)
 
             if tune and use_tune:
                 with tune.checkpoint_dir(step=epoch) as checkpoint_dir:
