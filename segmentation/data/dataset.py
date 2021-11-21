@@ -17,8 +17,6 @@ import numpy as np
 
 from torch.utils.data import Dataset
 
-from ..constants import EXPLAINED_VARIANCE, EXPLAINED_VARIANCE_RATIO, PRINCIPAL_COMPONENTS
-
 
 class SegmentationDataset(Dataset):
     """The parentclass of TrainDataset and TestDataset.
@@ -45,25 +43,27 @@ class SegmentationDataset(Dataset):
         image_size: Tuple (width, height) of the images
         total_crops: The number of crops possible per image
     """
-    def __init__(self, paths, crop_size, read_flags=[], preprocess=[]):
+    def __init__(self, paths, crop_size, read_flags=[], preprocess=[], transform=None):
         """Initialize the SegmentationDataset. This is called by the children of this class to load images and segmentations.
 
         There should be a one to one correspondence between the names in the folder <input_path> and <output_path>.
-        For example if there is a file input_folder/0001.png there should be a corresponding output_folder/0001.png
+        For example if there is a file input_folder/0001.png there should be a corresponding output_folder/0001.png.
 
         Args:
             paths (list(str)): List with the paths to the data
                 The file-names in each path sould have a one-to-one correspondence.
-                i.e. for a filename "0001.png" in a path there should be a corresponding "000.1.png" in the other folders
+                i.e. for a filename "0001.png" in a path there should be a corresponding "000.1.png" in the other folders.
             crop_size (int, tuple[int, int]): The size of the returned image sections should be.
                 If it is <int> height and width of the sections are the same.
                 If it is tuple then the width is the first element and height the second.
             read_flags (list[int]): A list of cv2.imread flags with which to read the files in the corresponding paths.
-            preprocess (list(function), optional): A list of functions that should be applied to each path loading them
+            preprocess (list(function), optional): A list of functions that should be applied to each path loading them.
+            transform (function, optional): A transformation that is applied after getting the input. Defaults to None.
                 Defaults to [].
         """
         self.paths = paths
         self.preprocess = preprocess
+        self.transform = transform
 
         # Define the number of crops
         if type(crop_size) is int:
@@ -119,11 +119,16 @@ class SegmentationDataset(Dataset):
         """
         image_names = os.listdir(path)
         image_names.sort()
+
         # Read all the images
-        images = [cv2.imread(os.path.join(path, name), flag) for name in image_names]
+        if all(".png" in image for image in image_names):
+            images = [cv2.imread(os.path.join(path, name), flag) for name in image_names]
+        elif all(".npy" in image for image in image_names):
+            images = [np.load(os.path.join(path, name)) for name in image_names]
+        
         images = np.array(images)
 
-        # Place the channels at the appropriate decision
+        # Place the channels at the appropriate position for torch
         if len(images.shape) == 3:
             images = np.expand_dims(images, 1)
         elif len(images.shape) == 4:
@@ -153,12 +158,9 @@ class TrainDataset(SegmentationDataset):
     This class performs pertubations based on the principal components of the image-dataset.
     Use the script in scripts/preprocessing/compute_pca.py to get the right values for your use-case
     and replace the ones in constants.py
-
-    Attributes:
-        random_transforms: List that indicates which imagessets to transfroms
     """
 
-    def __init__(self, paths, crop_size, read_flags=[], preprocess=[], random_transforms=True):
+    def __init__(self, paths, crop_size, read_flags=[], preprocess=[], transform=[]):
         """Initializes the Traindataset.
 
         Args:
@@ -166,12 +168,9 @@ class TrainDataset(SegmentationDataset):
             crop_size (int, tuple[int, int]): See SegmentationDataset
             read_flags (list[int]): See SegmentationDataset
             preprocess (list[function], optional): See SegmentationDataset. Defaults to [].
-            random_transforms (bool, optional): Bool whether to apply random transformations
             Defaults to True.
         """
-        super().__init__(paths, crop_size, read_flags, preprocess)
-
-        self.random_transforms = random_transforms
+        super().__init__(paths, crop_size, read_flags, preprocess, transform)
 
         self.num_crops_x = self.image_size[0] - self.x_crop + 1
         self.num_crops_y = self.image_size[1] - self.y_crop + 1
@@ -214,89 +213,17 @@ class TrainDataset(SegmentationDataset):
         # Convert to single precision float
         cropped = [np.single(c) for c in cropped]
 
-        if self.random_transforms:
-            transformed = self.random_transform(cropped)
+        # Apply the transforms to each output
+        if self.transform:
+            transformed = self.transform(cropped)
 
         return transformed
     
-    def random_transform(self, image_set):
-        """Applies different transformations to an (input, output) tuple.
-
-        Args:
-            images_set (list[numpy.ndarray]): A list of sections calculated by __getitem__.
-
-        Returns:
-            The transformed sections
-        """
-        image_set = self.random_flip(image_set)
-        image_set = self.random_rotate(image_set)
-        image_set = self.random_pertubations(image_set)
-        image_set = [i.copy() for i in image_set]
-        return image_set
-    
-    def random_flip(self, image_set):
-        """Randomly flips the data along an axis
-
-        Args:
-            image_set (list[numpy.ndarray]): Data sections found by __getitem__
-
-        Returns:
-            Returns a randomly flipped version of the inputs
-        """
-        # flip horizontally
-        if np.random.rand() > 0.5:
-            image_set  = [np.flip(i, 1) for i in image_set]
-        
-        # flip vertically
-        if np.random.rand() > 0.5:
-            image_set = [np.flip(i, 2) for i in image_set]
-
-        return image_set
-
-    def random_rotate(self, image_set):
-        """Randomly rotations the images by 0, 90, 180 or 270 degrees.
-
-        For this the section have to have equal height and width.
-
-        Args:
-            image_set (numpy.ndarray): Image sectios found by __getitem__.
-        Returns:
-            A randomly flipped version of the images
-        """
-        k = np.random.randint(4)
-        image_set = [np.rot90(i, k, axes=(1, 2)) for i in image_set]
-        return image_set
-
-    def random_pertubations(self, image_set):
-        """Perturbs the Images with at least 3 channels (are assumed to be BGR) 
-        value along the vectors of the most explained variance.
-
-        Taken from the alexNet paper. Look at the paper for implementation details.
-
-        The pca-components and the explained_variance_ratio have to been set correctly.
-        Look at the class-description on how to find those.
-
-        Args:
-            image_set (list[numpy.ndarray]): Image sections found by __getitem__.
-        Returns:
-            A randomly perturbed version of the found sections.
-        """
-
-        for i in range(len(image_set)):
-            image = image_set[i]
-            if image.shape[0] >= 3:
-                samples_a = np.random.normal(size=3)
-                offset = EXPLAINED_VARIANCE_RATIO * samples_a 
-                pixel_pertubation = np.array(PRINCIPAL_COMPONENTS).transpose().dot(offset)
-                pixel_pertubation = np.expand_dims(pixel_pertubation, axis=(1, 2))
-                image[:3] = image[:3] + pixel_pertubation
-            image_set[i] = image
-        return image_set
 
 class TestDataset(SegmentationDataset):
     """Implements SegmenationDataset where the outputs are non-overlapping sections of the original images.
     """
-    def __init__(self, paths, crop_size, read_flags=[], preprocess=[]):
+    def __init__(self, paths, crop_size, read_flags=[], preprocess=[], transform=[]):
         """Initializes the TestDataset by calling its parent class and setting the appropriate number of crops
 
         Args:
@@ -306,7 +233,7 @@ class TestDataset(SegmentationDataset):
             preprocess (list(function), optional): See SegmentationDataset
 
         """
-        super().__init__(paths, crop_size, read_flags, preprocess)
+        super().__init__(paths, crop_size, read_flags, preprocess, transform)
 
         self.num_crops_x = self.image_size[0] // self.x_crop
         self.num_crops_y = self.image_size[1] // self.y_crop
@@ -347,4 +274,8 @@ class TestDataset(SegmentationDataset):
         # Convert to single float
         cropped = [np.single(i) for i in cropped]
 
-        return cropped
+        # Apply the transforms to each output
+        if self.transform:
+            transformed = self.transform(cropped)
+
+        return transformed 

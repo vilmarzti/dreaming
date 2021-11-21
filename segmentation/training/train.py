@@ -10,7 +10,6 @@ from torch.utils.data import DataLoader
 from torch.nn.modules.loss import BCELoss
 from torch.nn.functional import interpolate 
 
-from segmentation.helper import preprocessing
 from segmentation.data.dataset import TestDataset, TrainDataset 
 from segmentation.helper.metrics import jaccard_index
 
@@ -43,14 +42,13 @@ def crop_or_scale(predictions, targets, transform="scale"):
             raise ValueError(f"predictions of the Model has not the same shape as target.\nOutput shape{predictions.shape} Target shape: {targets.shape}\nPlease provide the right transform argument in the training function")
     return predictions, targets 
 
-def create_train(create_model, train_set, test_set, use_tune=True, transform=None):
+def create_train(create_model, use_tune=True, transform=None):
     """ Creates a train function that can be called from ray.tune or started with a costum config.
 
     Args:
         create_model (function): A function that takes in a config-dict and generates a  corresponding model.
             For example create_cnn creates a cnn from a given config. Check out segmentation.helper.create_models for available methods.
-        train_set (TrainDataset): A dataset with the train data
-        test_set (TestDataset): A dataset with the test data.
+
         use_tune (bool, optional): Whether to use tune during execution of the returned train function. 
             Set this to False when executing training without tune. Defaults to True.
         transform (str, optional): How to transform the output of the model or the labels if their sizes mismatch. 
@@ -62,7 +60,7 @@ def create_train(create_model, train_set, test_set, use_tune=True, transform=Non
         the model and a checkpoint_dir if tune wants to resume from a checkpoint.
     """
 
-    def train(config, checkpoint_dir=None):
+    def train(config, checkpoint_dir=None, train_set=None, test_set=None):
         """Trains a network on a created model given a config.
 
         Args:
@@ -70,6 +68,8 @@ def create_train(create_model, train_set, test_set, use_tune=True, transform=Non
                 Compare to the create_model parameter of the parent function.
             checkpoint_dir (str, optional): A model checkpoint-dir from which to load a model.
                 The config of the model should correspond to the model in the checkpoint. Defaults to None.
+            train_set (TrainDataset): A dataset with the train data
+            test_set (TestDataset): A dataset with the test data.
         """
         # Other params
         learning_rate = config["learning_rate"]
@@ -95,7 +95,7 @@ def create_train(create_model, train_set, test_set, use_tune=True, transform=Non
             optimizer.load_state_dict(optimizer_state)
         
         # Train on equal num of expamples no matter the batchsize
-        max_steps_train = len(train_loader) // (1000 / batch_size)
+        max_steps_train = len(train_loader) // (5000 / batch_size)
 
         for epoch in range(1000):
             running_loss = 0
@@ -112,11 +112,11 @@ def create_train(create_model, train_set, test_set, use_tune=True, transform=Non
 
                 outputs = net(inputs)
 
-                outputs = torch.squeeze(outputs, 1)
-                labels = torch.squeeze(labels, 1)
-
                 # either interpolate outputs or crop target if it does not have same size
                 outputs, labels = crop_or_scale(outputs, labels, transform)
+
+                outputs = torch.squeeze(outputs, 1)
+                labels = torch.squeeze(labels, 1)
 
                 loss = criterion(outputs, labels)
                 loss.backward()
@@ -138,13 +138,13 @@ def create_train(create_model, train_set, test_set, use_tune=True, transform=Non
 
                     # Compute output of net
                     outputs = net(inputs)
- 
-                    # Remove dimension
-                    outputs = torch.squeeze(outputs, 1)
-                    labels = torch.squeeze(labels, 1)                   
-
+                  
                     # Either crop or scale the labels, oututs
                     outputs, labels = crop_or_scale(outputs, labels, transform)
+
+                    # Remove dimension
+                    outputs = torch.squeeze(outputs, 1)
+                    labels = torch.squeeze(labels, 1)  
 
                     # compute validation loss
                     val_loss = criterion(outputs, labels)

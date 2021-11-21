@@ -3,7 +3,7 @@ import torch
 import functools
 import numpy as np
 
-from ..constants import BGR_MEAN
+from ..constants import BGR_MEAN, EXPLAINED_VARIANCE_RATIO, PRINCIPAL_COMPONENTS
 
 
 def compose(*functions):
@@ -119,6 +119,94 @@ def positionalencoding2d_sin(d_model, width, height):
     pe = pe.detach().numpy()
 
     return pe
+
+def merge(image_set, cutoff=0):
+    first_split = image_set[:cutoff]
+    second_split = image_set[cutoff:]
+
+    # merge first split
+    first_split = np.concatenate(first_split, axis=0)
+    return [first_split, *second_split]
+
+
+def random_transform(image_set):
+    """Applies different transformations to an (input, output) tuple.
+
+    Args:
+        images_set (list[numpy.ndarray]): A list of sections calculated by __getitem__.
+
+    Returns:
+        The transformed sections
+    """
+    image_set = random_flip(image_set)
+    image_set = random_rotate(image_set)
+    image_set = random_pertubations(image_set)
+    image_set = copy_images(image_set)
+    return image_set
+
+def copy_images(image_set):
+    new_image_set = [i.copy() for i in image_set]
+    return new_image_set
+
+
+def random_flip(image_set):
+    """Randomly flips the data along an axis
+
+    Args:
+        image_set (list[numpy.ndarray]): Data sections found by __getitem__
+
+    Returns:
+        Returns a randomly flipped version of the inputs
+    """
+    # flip horizontally
+    if np.random.rand() > 0.5:
+        image_set  = [np.flip(i, 1) for i in image_set]
+    
+    # flip vertically
+    if np.random.rand() > 0.5:
+        image_set = [np.flip(i, 2) for i in image_set]
+
+    return image_set
+
+def random_rotate(image_set):
+    """Randomly rotations the images by 0, 90, 180 or 270 degrees.
+
+    For this the section have to have equal height and width.
+
+    Args:
+        image_set (numpy.ndarray): Image sectios found by __getitem__.
+    Returns:
+        A randomly flipped version of the images
+    """
+    k = np.random.randint(4)
+    image_set = [np.rot90(i, k, axes=(1, 2)) for i in image_set]
+    return image_set
+
+def random_pertubations(image_set):
+    """Perturbs the Images with at least 3 channels (are assumed to be BGR) 
+    value along the vectors of the most explained variance.
+
+    Taken from the alexNet paper. Look at the paper for implementation details.
+
+    The pca-components and the explained_variance_ratio have to been set correctly.
+    Look at the class-description on how to find those.
+
+    Args:
+        image_set (list[numpy.ndarray]): Image sections found by __getitem__.
+    Returns:
+        A randomly perturbed version of the found sections.
+    """
+
+    for i in range(len(image_set)):
+        image = image_set[i]
+        if image.shape[0] >= 3:
+            samples_a = np.random.normal(size=3)
+            offset = EXPLAINED_VARIANCE_RATIO * samples_a 
+            pixel_pertubation = np.array(PRINCIPAL_COMPONENTS).transpose().dot(offset)
+            pixel_pertubation = np.expand_dims(pixel_pertubation, axis=(1, 2))
+            image[:3] = image[:3] + pixel_pertubation
+        image_set[i] = image
+    return image_set
 
 def positionalencoding2d_linear(width, height):
     """Add positional encoding by linearly increasing the values from -0.5 to 0.5

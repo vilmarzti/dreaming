@@ -1,17 +1,67 @@
+import cv2
 from ray import tune
 
 from ray.tune.schedulers import HyperBandScheduler
 from ray.tune.suggest.hyperopt import HyperOptSearch
 from ray.tune.stopper import TrialPlateauStopper
+from segmentation.data.dataset import TestDataset, TrainDataset
 
 from segmentation.training import create_test_best, create_train
-from segmentation.helper import create_unet
+from segmentation.helper import create_unet, transforms 
 
 
 def trial_str_creator(trial):
     return f"trial_{trial.trial_id}"
 
 def main(num_samples, max_num_epochs=20, gpus_per_trial=0.5):
+    train_paths= [
+        "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/train_input",
+        "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/train_output",
+    ],
+
+    test_paths = [
+        "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/valid_input",
+        "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/valid_output"
+    ]
+
+    read_flags = [
+        cv2.IMREAD_COLOR,
+        cv2.IMREAD_GRAYSCALE
+    ]
+
+    preprocess = [
+        transforms.compose([transforms.add_encoding, transforms.subtract_mean]),
+        transforms.threshold
+    ]
+
+    transform = [
+        transforms.compose(*[transforms.copy_images, transforms.random_pertubations, transforms.random_rotate,transforms.random_flip]),
+        lambda x: x
+    ]
+
+    # This creates an output with minimal loss of height and size for Unet of depth 2/3
+    crop_size = 252
+
+    train_set = TrainDataset(
+        train_paths,
+        crop_size,
+        read_flags=read_flags,
+        preprocess=preprocess,
+        transforms=transform
+    )
+
+    test_set = TestDataset(
+        test_paths,
+        crop_size,
+        read_flags=read_flags,
+        preprocess=preprocess,
+    )
+
+    train = create_train(
+        create_unet,
+        transform="crop"
+    )
+
     config = {
         "deepness": tune.randint(2, 4),
         "starting_multiplier": tune.randint(3, 8),
@@ -38,22 +88,16 @@ def main(num_samples, max_num_epochs=20, gpus_per_trial=0.5):
         std=0.006
     )
 
-    train = create_train(
-        create_unet,
-        252,             # This creates an output with minimal loss of height and size for Unet of depth 2/3
-        True,
-        transform="crop"
-    )
 
     test_best_model = create_test_best(
         create_unet,
-        252,
+        crop_size,
         True,
         transform="crop"
     )
 
     result = tune.run(
-        tune.with_parameters(train),
+        tune.with_parameters(train, train_set=train_set, test_set=test_set),
         resources_per_trial={"cpu": 8, "gpu": 1},
         config=config,
         num_samples=num_samples,

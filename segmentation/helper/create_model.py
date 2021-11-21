@@ -1,4 +1,5 @@
 from segmentation.models import CNNSegmentation, UNet
+from segmentation.models.ensemble import Ensemble
 
 
 def create_cnn(config):
@@ -16,7 +17,7 @@ def create_cnn(config):
     return net
 
 def create_unet(config):
-    input_channels = 3
+    input_channels = config["input_channels"]
     deepness = config["deepness"]
     starting_multiplier = config["starting_multiplier"]
     use_thin = config["use_thin"]
@@ -31,3 +32,10 @@ def create_unet(config):
     )
 
     return net
+
+def create_ensemble(config):
+    input_channels = config["input_channels"]
+    kernel_size = config["kernel_size"]
+
+    ensemble = Ensemble(num_channels, kernel_size)
+    return ensemble

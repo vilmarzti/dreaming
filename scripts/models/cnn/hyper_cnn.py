@@ -6,7 +6,7 @@ from ray.tune.stopper import TrialPlateauStopper
 from segmentation.data.dataset import TestDataset, TrainDataset
 
 from segmentation.training import create_test_best, create_train
-from segmentation.helper import create_cnn, preprocessing
+from segmentation.helper import create_cnn, transforms 
 
 
 def trial_str_creator(trial):
@@ -16,7 +16,7 @@ def main(num_samples, max_num_epochs=30, gpus_per_trial=0.5):
     train_paths= [
         "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/train_input",
         "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/train_output",
-    ],
+    ]
 
     test_paths = [
         "/home/martin/Videos/ondrej_et_al/bf/segmentation/nn/valid_input",
@@ -29,10 +29,17 @@ def main(num_samples, max_num_epochs=30, gpus_per_trial=0.5):
     ]
 
     preprocess = [
-        preprocessing.compose(*[preprocessing.add_encoding, preprocessing.subtract_mean]),
-        preprocessing.threshold
-    ],
+        transforms.compose(*[transforms.add_encoding, transforms.subtract_mean]),
+        transforms.threshold
+    ]
 
+    transform = transforms.compose(*[
+        transforms.copy_images,
+        transforms.random_pertubations,
+        transforms.random_rotate, 
+        transforms.random_flip
+    ]),
+    
     crop_size = 300
 
     train_set = TrainDataset(
@@ -40,7 +47,7 @@ def main(num_samples, max_num_epochs=30, gpus_per_trial=0.5):
         crop_size,
         read_flags=read_flags,
         preprocess=preprocess,
-        random_transforms=True
+        transforms=transform
     )
 
     test_set = TestDataset(
