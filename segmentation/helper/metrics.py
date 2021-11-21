@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 
 def jaccard_index(pred_labels, target_labels, device="cpu"):
@@ -29,3 +30,11 @@ def jaccard_index(pred_labels, target_labels, device="cpu"):
     else:
         return intersection / union
 
+def jaccard_index_numpy(pred_labels, target_labels):
+    union = np.bitwise_or(pred_labels, target_labels).sum()
+    intersection = np.bitwise_and(pred_labels, target_labels).sum()
+
+    if union == 0:
+        return 1.0
+    else:
+        return intersection / union
