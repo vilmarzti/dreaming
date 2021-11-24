@@ -151,7 +151,20 @@ class SegmentationDataset(Dataset):
             cropped = images[img_idx, ..., upper_left[1]: upper_left[1] + self.y_crop, upper_left[0]: upper_left[0] + self.x_crop]
             cropped_set.append(cropped)
         return cropped_set
+    
+    def get_image(self, img_num, position):
+        # Crop images
+        cropped = self.crop_position(img_num, position)
 
+        # Convert to single precision float
+        cropped = [np.single(c) for c in cropped]
+
+        # Apply the transforms to each output
+        if self.transform:
+            transformed = self.transform(cropped)
+
+        return transformed
+ 
 class TrainDataset(SegmentationDataset):
     """Implements SegmenationDataset where the outputs are overlapping sections of the original images.
 
@@ -207,17 +220,9 @@ class TrainDataset(SegmentationDataset):
         x_value = idx % self.num_crops_x
         y_value = (idx // self.num_crops_x) % self.num_crops_y
 
-        # Crop images
-        cropped = self.crop_position(img_num, (x_value, y_value))
+        images = self.get_image(img_num, (x_value, y_value))
 
-        # Convert to single precision float
-        cropped = [np.single(c) for c in cropped]
-
-        # Apply the transforms to each output
-        if self.transform:
-            transformed = self.transform(cropped)
-
-        return transformed
+        return images 
     
 
 class TestDataset(SegmentationDataset):
@@ -268,14 +273,26 @@ class TestDataset(SegmentationDataset):
         index_x = (idx % self.num_crops_x) * self.x_crop
         index_y = ((idx % self.total_crops) // self.num_crops_x) * self.y_crop
 
-        # Crop at position
-        cropped = self.crop_position(img_num, (index_x, index_y))
+        images = self.get_image(img_num, (index_x, index_y))
 
-        # Convert to single float
-        cropped = [np.single(i) for i in cropped]
+        return images 
 
-        # Apply the transforms to each output
-        if self.transform:
-            transformed = self.transform(cropped)
+class GenerationDataset(SegmentationDataset):
+    def __init__(self, paths, crop_size, read_flags=[], preprocess=[], transform=[]):
+        super().__init__(paths, crop_size, read_flags, preprocess, transform)
+        self.num_crops_x, self.num_crops_y  = self.image_size
+        self.total_crops = len(self.images_list)
+        self.transform = transform
+    
+    def __len__(self):
+        return self.total_crops
+    
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+        
+        image_num = idx
 
-        return transformed 
+        images = self.get_image(image_num, (0, 0))
+        return images
+

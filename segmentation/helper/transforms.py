@@ -126,7 +126,7 @@ def merge(image_set, cutoff=0):
 
     # merge first split
     first_split = np.concatenate(first_split, axis=0)
-    return [first_split, *second_split]
+    return np.array([first_split, *second_split])
 
 
 def random_transform(image_set):
