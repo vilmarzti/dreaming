@@ -44,8 +44,7 @@ def main():
         masked_image = np.array(img_original * combined_mask, dtype=np.uint8)
         combined_mask = np.array(combined_mask * 255, dtype=np.uint8)
 
-        cv2.imshow("combined", img_original)
-        cv2.waitKey(10)
+        cv2.imwrite(path.join("data/combined", image_name), masked_image)
 
 if __name__ == "__main__":
     main()
