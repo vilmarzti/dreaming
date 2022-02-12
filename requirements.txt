@@ -57,11 +57,11 @@ msgpack==1.0.2
 multidict==5.2.0
 mypy-extensions==0.4.3
 networkx==2.6.3
-numpy==1.19.1
+numpy==1.22.2
 nvidia-ml-py3==7.352.0
 opencensus==0.8.0
 opencensus-context==0.1.2
-opencv-python==3.4.7.28
+opencv-python==4.5.5.62
 opt-einsum==3.3.0
 pandas==1.3.4
 pathspec==0.9.0
@@ -75,7 +75,6 @@ py-spy==0.3.11
 pyarrow==6.0.0
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
-pybgs @ file:///home/martin/Downloads/bgslibrary
 pycodestyle==2.8.0
 Pygments==2.10.0
 pyparsing==3.0.3
@@ -90,27 +89,19 @@ redis==3.5.3
 regex==2021.11.10
 requests==2.26.0
 rsa==4.7.2
-scikit-image==0.17.2
+scikit-image==0.19.1
 scikit-learn==1.0.1
-scipy==1.5.2
+scipy==1.8.0
 -e git+git@github.com:vilmarzti/dreaming.git@c20b8a57ee65531371bf740d5ce078ddb58c16d8#egg=segmentation
 SimpleITK==2.1.1
 six==1.16.0
 SQLAlchemy==1.4.26
 tabulate==0.8.9
-tensorboard==1.15.0
-tensorboardX==2.4
-tensorflow==1.15.3
-tensorflow-estimator==1.15.1
 termcolor==1.1.0
 threadpoolctl==3.0.0
 tifffile==2021.10.12
 toml==0.10.2
 tomli==1.2.2
-torch==1.8.0+cu111
-torchaudio==0.8.0
-torchsummary==1.5.1
-torchvision==0.9.0+cu111
 tqdm==4.62.3
 triad==0.5.5
 tune==0.0.9
